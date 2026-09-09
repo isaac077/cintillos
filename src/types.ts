@@ -59,9 +59,9 @@ export interface WatermarkConfig {
   originalWidth: number;
   originalHeight: number;
   position: CornerPosition;
-  scalePercent: number; // 8 to 40% of photo dimension
+  scalePercent: number; // 100 = 100% native real size (1:1 pixels)
   opacity: number; // 0 to 1
-  marginPx: number; // margin in px
+  marginPx: number; // margin from corner in px
 }
 
 export interface CintilloConfig {
@@ -75,7 +75,7 @@ export interface CintilloConfig {
   // Scaling options:
   fitMode: 'full-width' | 'height-percent' | 'scale';
   heightPercent: number; // e.g. 14% of image height
-  scalePercent: number; // 100% default
+  scalePercent: number; // 100 = 100% native real size (1:1 pixels)
   opacity: number; // 0 to 1
   marginPx: number; // padding from edge
   // Orientation adaptive settings:

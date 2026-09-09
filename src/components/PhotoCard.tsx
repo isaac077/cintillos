@@ -70,6 +70,7 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({
     cintillo.position,
     cintillo.fitMode,
     cintillo.heightPercent,
+    cintillo.scalePercent,
     cintillo.opacity,
     cintillo.marginPx,
     cintillo.adaptiveBehavior,

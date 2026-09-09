@@ -430,7 +430,15 @@ export const CropModal: React.FC<CropModalProps> = ({
                     alt="Cintillo preview"
                     style={{
                       opacity: cintillo.opacity,
-                      width: cintillo.fitMode === 'full-width' ? '100%' : 'auto',
+                      width:
+                        cintillo.fitMode === 'full-width'
+                          ? '100%'
+                          : cintillo.fitMode === 'scale'
+                          ? `${Math.min(
+                              screenCrop.width,
+                              (cintillo.originalWidth || 1000) * ((cintillo.scalePercent ?? 100) / 100) * scale
+                            )}px`
+                          : 'auto',
                       maxHeight:
                         cintillo.fitMode === 'height-percent'
                           ? `${cintillo.heightPercent}%`
@@ -450,7 +458,7 @@ export const CropModal: React.FC<CropModalProps> = ({
                 (cintillo.overlayMode === 'corner-logo' || cintillo.overlayMode === 'both') &&
                 (cintillo.watermark?.objectUrl || (cintillo.overlayMode === 'corner-logo' && cintillo.objectUrl)) && (
                   <div
-                    className="absolute pointer-events-none z-10"
+                    className="absolute pointer-events-none z-10 transition-all"
                     style={{
                       top:
                         cintillo.watermark?.position?.startsWith('top')
@@ -474,8 +482,17 @@ export const CropModal: React.FC<CropModalProps> = ({
                           : 'auto',
                       transform:
                         cintillo.watermark?.position === 'center' ? 'translate(-50%, -50%)' : undefined,
-                      width: `${cintillo.watermark?.scalePercent || 18}%`,
-                      maxWidth: '45%',
+                      width: `${Math.min(
+                        screenCrop.width - (cintillo.watermark?.marginPx || 20) * scale * 2,
+                        Math.max(
+                          20,
+                          (cintillo.watermark?.originalWidth ||
+                            (cintillo.overlayMode === 'corner-logo' ? cintillo.originalWidth : 0) ||
+                            350) *
+                            ((cintillo.watermark?.scalePercent ?? 100) / 100) *
+                            scale
+                        )
+                      )}px`,
                     }}
                   >
                     <img

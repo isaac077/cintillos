@@ -408,11 +408,11 @@ export const CintilloManager: React.FC<CintilloManagerProps> = ({
                     <Sliders className="w-3 h-3 text-slate-500" />
                     Ajuste de Escala
                   </label>
-                  <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-lg text-xs font-medium">
+                  <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-lg text-xs font-medium">
                     <button
                       type="button"
                       onClick={() => onChange({ ...cintillo, fitMode: 'full-width' })}
-                      className={`py-1.5 px-2 rounded-md text-center transition-all ${
+                      className={`py-1.5 px-1.5 rounded-md text-center transition-all ${
                         cintillo.fitMode === 'full-width'
                           ? 'bg-white text-indigo-700 shadow-xs font-semibold'
                           : 'text-slate-600 hover:text-slate-900'
@@ -422,8 +422,19 @@ export const CintilloManager: React.FC<CintilloManagerProps> = ({
                     </button>
                     <button
                       type="button"
+                      onClick={() => onChange({ ...cintillo, fitMode: 'scale' })}
+                      className={`py-1.5 px-1.5 rounded-md text-center transition-all ${
+                        cintillo.fitMode === 'scale'
+                          ? 'bg-white text-indigo-700 shadow-xs font-semibold'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      100% Real (1:1)
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => onChange({ ...cintillo, fitMode: 'height-percent' })}
-                      className={`py-1.5 px-2 rounded-md text-center transition-all ${
+                      className={`py-1.5 px-1.5 rounded-md text-center transition-all ${
                         cintillo.fitMode === 'height-percent'
                           ? 'bg-white text-indigo-700 shadow-xs font-semibold'
                           : 'text-slate-600 hover:text-slate-900'
@@ -434,8 +445,36 @@ export const CintilloManager: React.FC<CintilloManagerProps> = ({
                   </div>
                 </div>
 
-                {/* Height % Slider if in height-percent mode, or scale slider */}
-                {cintillo.fitMode === 'height-percent' ? (
+                {/* Sizing Slider based on fitMode */}
+                {cintillo.fitMode === 'scale' ? (
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-semibold text-slate-700">Escala del cintillo</span>
+                      <span className={`font-bold ${cintillo.scalePercent === 100 ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                        {cintillo.scalePercent || 100}% {cintillo.scalePercent === 100 ? '(Tamaño Real 1:1)' : ''}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="10"
+                      max="200"
+                      step="1"
+                      value={cintillo.scalePercent || 100}
+                      onChange={(e) => onChange({ ...cintillo, scalePercent: Number(e.target.value) })}
+                      className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                    />
+                    <div className="flex items-center justify-between text-[10px]">
+                      <button
+                        type="button"
+                        onClick={() => onChange({ ...cintillo, scalePercent: 100 })}
+                        className="text-indigo-600 font-semibold hover:underline"
+                      >
+                        [Restablecer 100% Real]
+                      </button>
+                      <span className="text-slate-400">10% a 200%</span>
+                    </div>
+                  </div>
+                ) : cintillo.fitMode === 'height-percent' ? (
                   <div className="space-y-1.5">
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-semibold text-slate-700">Altura del cintillo</span>
@@ -464,7 +503,7 @@ export const CintilloManager: React.FC<CintilloManagerProps> = ({
                     <input
                       type="range"
                       min="0"
-                      max="40"
+                      max="50"
                       step="2"
                       value={cintillo.marginPx}
                       onChange={(e) => onChange({ ...cintillo, marginPx: Number(e.target.value) })}
@@ -472,7 +511,7 @@ export const CintilloManager: React.FC<CintilloManagerProps> = ({
                     />
                     <div className="flex justify-between text-[10px] text-slate-400">
                       <span>Pegado (0px)</span>
-                      <span>Espaciado (40px)</span>
+                      <span>Espaciado (50px)</span>
                     </div>
                   </div>
                 )}
@@ -762,18 +801,27 @@ export const CintilloManager: React.FC<CintilloManagerProps> = ({
 
                 {/* Size, Opacity, Margin Sliders */}
                 <div className="md:col-span-7 space-y-3">
-                  {/* Scale / Size */}
-                  <div className="space-y-1 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+                  {/* Scale / Size (100% = Tamaño Real 1:1) */}
+                  <div className="space-y-1.5 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="font-semibold text-slate-700">Tamaño del Logo / Marca de agua</span>
-                      <span className="font-bold text-indigo-600">{cintillo.watermark?.scalePercent || 18}%</span>
+                      <span className="font-semibold text-slate-700">Tamaño del Logo (100% = Real 1:1)</span>
+                      {(cintillo.watermark?.scalePercent ?? 100) === 100 ? (
+                        <span className="font-bold text-emerald-700 bg-emerald-100/90 px-2 py-0.5 rounded text-[11px] border border-emerald-300">
+                          100% — Tamaño Real (1:1)
+                        </span>
+                      ) : (
+                        <span className="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded text-[11px] border border-indigo-200">
+                          {cintillo.watermark?.scalePercent ?? 100}%
+                        </span>
+                      )}
                     </div>
+
                     <input
                       type="range"
-                      min="8"
-                      max="38"
+                      min="10"
+                      max="200"
                       step="1"
-                      value={cintillo.watermark?.scalePercent || 18}
+                      value={cintillo.watermark?.scalePercent ?? 100}
                       onChange={(e) =>
                         onChange({
                           ...cintillo,
@@ -782,10 +830,45 @@ export const CintilloManager: React.FC<CintilloManagerProps> = ({
                       }
                       className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
                     />
-                    <div className="flex justify-between text-[10px] text-slate-400">
-                      <span>Discreto (8%)</span>
-                      <span>Medio (18%)</span>
-                      <span>Grande (38%)</span>
+
+                    {/* Quick presets and real pixel dimensions */}
+                    <div className="flex flex-wrap items-center justify-between gap-1 pt-1 border-t border-slate-200/60 text-[11px]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-slate-500 text-[10px]">Preajustes:</span>
+                        {[50, 75, 100, 125, 150].map((preset) => (
+                          <button
+                            key={preset}
+                            type="button"
+                            onClick={() =>
+                              onChange({
+                                ...cintillo,
+                                watermark: { ...cintillo.watermark, scalePercent: preset },
+                              })
+                            }
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                              (cintillo.watermark?.scalePercent ?? 100) === preset
+                                ? 'bg-indigo-600 text-white font-bold'
+                                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                            }`}
+                          >
+                            {preset === 100 ? '100% Real' : `${preset}%`}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Calculated dimensions in pixels */}
+                      {cintillo.watermark?.originalWidth ? (
+                        <span className="text-[10px] text-slate-500 font-mono">
+                          {Math.round(
+                            (cintillo.watermark.originalWidth * (cintillo.watermark.scalePercent ?? 100)) / 100
+                          )}{' '}
+                          ×{' '}
+                          {Math.round(
+                            (cintillo.watermark.originalHeight * (cintillo.watermark.scalePercent ?? 100)) / 100
+                          )}{' '}
+                          px
+                        </span>
+                      ) : null}
                     </div>
                   </div>
 
@@ -826,7 +909,7 @@ export const CintilloManager: React.FC<CintilloManagerProps> = ({
                     <input
                       type="range"
                       min="0"
-                      max="50"
+                      max="60"
                       step="2"
                       value={cintillo.watermark?.marginPx ?? 20}
                       onChange={(e) =>
@@ -839,7 +922,7 @@ export const CintilloManager: React.FC<CintilloManagerProps> = ({
                     />
                     <div className="flex justify-between text-[10px] text-slate-400">
                       <span>Al borde (0px)</span>
-                      <span>Holgado (50px)</span>
+                      <span>Espaciado (60px)</span>
                     </div>
                   </div>
                 </div>
@@ -849,182 +932,390 @@ export const CintilloManager: React.FC<CintilloManagerProps> = ({
         </div>
       )}
 
-      {/* DUAL LIVE PREVIEW: Shows how the photo cards look with Banner, Corner Logo, or Both */}
+      {/* DUAL LIVE PREVIEW: Truly interactive, real-time animated preview of Vertical & Horizontal photos */}
       {(hasBanner || hasLogo) && (
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              Previsualización en tiempo real (Vertical vs Horizontal):
+              Previsualización dinámica en tiempo real (mueve los controles o haz clic en las esquinas):
             </span>
             <span className="text-[11px] text-slate-500 font-medium">
               {mode === 'both' ? 'Cintillo + Logo activo' : mode === 'corner-logo' ? 'Logo en esquina activo' : 'Cintillo activo'}
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 items-center">
-            {/* Vertical Preview Card */}
-            <div className="bg-slate-900 rounded-lg p-2.5 flex flex-col justify-between aspect-4/5 border border-slate-800 relative overflow-hidden group shadow-inner">
-              {/* Header inside vertical preview */}
-              <div className="flex items-center justify-between w-full z-10">
-                <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider">
+          <div className="grid grid-cols-2 gap-3.5 items-start">
+            {/* 1. Vertical Preview Card (4:5 Ratio) */}
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between px-1 text-[11px]">
+                <span className="font-bold text-indigo-700 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-indigo-600 inline-block" />
                   Vertical (4:5)
                 </span>
-
-                {/* If logo is top-right, show it */}
-                {(mode === 'corner-logo' || mode === 'both') &&
-                  activeLogoUrl &&
-                  (cintillo.watermark?.position || 'top-right') === 'top-right' && (
-                    <img
-                      src={activeLogoUrl}
-                      alt="Corner logo preview"
-                      className="h-7 w-7 object-contain rounded"
-                      style={{ opacity: cintillo.watermark?.opacity ?? 0.85 }}
-                    />
-                  )}
+                <span className="text-[10px] text-slate-400 font-mono">1080 × 1350</span>
               </div>
 
-              {/* If logo is top-left, bottom-left, or center */}
-              {(mode === 'corner-logo' || mode === 'both') && activeLogoUrl && (
-                <>
-                  {(cintillo.watermark?.position || 'top-right') === 'top-left' && (
-                    <img
-                      src={activeLogoUrl}
-                      alt="Corner logo preview"
-                      className="absolute top-8 left-2 h-7 w-7 object-contain z-10"
-                      style={{ opacity: cintillo.watermark?.opacity ?? 0.85 }}
-                    />
-                  )}
-                  {cintillo.watermark?.position === 'center' && (
-                    <img
-                      src={activeLogoUrl}
-                      alt="Center watermark preview"
-                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-10 w-10 object-contain z-10"
-                      style={{ opacity: cintillo.watermark?.opacity ?? 0.85 }}
-                    />
-                  )}
-                  {cintillo.watermark?.position === 'bottom-left' && (
-                    <img
-                      src={activeLogoUrl}
-                      alt="Corner logo preview"
-                      className="absolute bottom-9 left-2 h-7 w-7 object-contain z-10"
-                      style={{ opacity: cintillo.watermark?.opacity ?? 0.85 }}
-                    />
-                  )}
-                  {cintillo.watermark?.position === 'bottom-right' && (
-                    <img
-                      src={activeLogoUrl}
-                      alt="Corner logo preview"
-                      className="absolute bottom-9 right-2 h-7 w-7 object-contain z-10"
-                      style={{ opacity: cintillo.watermark?.opacity ?? 0.85 }}
-                    />
-                  )}
-                </>
-              )}
-
-              <div className="text-[10px] text-slate-500 self-center my-auto">Foto Vertical</div>
-
-              {/* Banner if enabled */}
-              {(mode === 'banner' || mode === 'both') && cintillo.objectUrl ? (
-                <div
-                  className="w-full bg-black/40 border border-white/10 rounded p-1 flex items-center justify-center z-10"
-                  style={{
-                    alignSelf: cintillo.position === 'top' ? 'flex-start' : cintillo.position === 'center' ? 'center' : 'flex-end',
-                  }}
-                >
-                  <img
-                    src={cintillo.objectUrl}
-                    alt="Cintillo en Vertical"
-                    className="max-h-5 object-contain"
-                    style={{ opacity: cintillo.opacity }}
-                  />
+              <div
+                className="w-full bg-linear-to-b from-slate-900 via-slate-800 to-indigo-950 rounded-xl border border-slate-700/80 relative overflow-hidden shadow-inner select-none transition-all"
+                style={{ aspectRatio: '4 / 5' }}
+              >
+                {/* Photo Mock Silhouette Background */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-20">
+                  <div className="w-16 h-16 rounded-full border-2 border-dashed border-white/40 mb-2 flex items-center justify-center">
+                    <ImageIcon className="w-8 h-8 text-white/50" />
+                  </div>
+                  <span className="text-[10px] text-white/60 tracking-wider uppercase font-semibold">Foto Vertical</span>
                 </div>
-              ) : (
-                <div className="h-1" />
-              )}
+
+                {/* Interactive Clickable Hotspots for fast positioning */}
+                {(mode === 'corner-logo' || mode === 'both') && (
+                  <div className="absolute inset-0 z-10 grid grid-cols-3 grid-rows-3 p-1 pointer-events-auto">
+                    <button
+                      type="button"
+                      title="Mover a Superior Izquierda"
+                      onClick={() =>
+                        onChange({
+                          ...cintillo,
+                          watermark: { ...cintillo.watermark, position: 'top-left' },
+                        })
+                      }
+                      className="cursor-pointer hover:bg-white/10 rounded transition-colors"
+                    />
+                    <div />
+                    <button
+                      type="button"
+                      title="Mover a Superior Derecha"
+                      onClick={() =>
+                        onChange({
+                          ...cintillo,
+                          watermark: { ...cintillo.watermark, position: 'top-right' },
+                        })
+                      }
+                      className="cursor-pointer hover:bg-white/10 rounded transition-colors"
+                    />
+                    <div />
+                    <button
+                      type="button"
+                      title="Mover al Centro"
+                      onClick={() =>
+                        onChange({
+                          ...cintillo,
+                          watermark: { ...cintillo.watermark, position: 'center' },
+                        })
+                      }
+                      className="cursor-pointer hover:bg-white/10 rounded transition-colors"
+                    />
+                    <div />
+                    <button
+                      type="button"
+                      title="Mover a Inferior Izquierda"
+                      onClick={() =>
+                        onChange({
+                          ...cintillo,
+                          watermark: { ...cintillo.watermark, position: 'bottom-left' },
+                        })
+                      }
+                      className="cursor-pointer hover:bg-white/10 rounded transition-colors"
+                    />
+                    <div />
+                    <button
+                      type="button"
+                      title="Mover a Inferior Derecha"
+                      onClick={() =>
+                        onChange({
+                          ...cintillo,
+                          watermark: { ...cintillo.watermark, position: 'bottom-right' },
+                        })
+                      }
+                      className="cursor-pointer hover:bg-white/10 rounded transition-colors"
+                    />
+                  </div>
+                )}
+
+                {/* DYNAMIC WATERMARK / LOGO ON VERTICAL */}
+                {(mode === 'corner-logo' || mode === 'both') && activeLogoUrl && (
+                  <div
+                    className="absolute pointer-events-none transition-all duration-200 z-20 flex items-center justify-center"
+                    style={{
+                      top:
+                        cintillo.watermark?.position === 'top-left' || cintillo.watermark?.position === 'top-right'
+                          ? `${Math.max(3, ((cintillo.watermark.marginPx ?? 20) / 1080) * 100)}%`
+                          : cintillo.watermark?.position === 'center'
+                          ? '50%'
+                          : 'auto',
+                      bottom:
+                        cintillo.watermark?.position === 'bottom-left' || cintillo.watermark?.position === 'bottom-right'
+                          ? `${Math.max(3, ((cintillo.watermark.marginPx ?? 20) / 1080) * 100)}%`
+                          : 'auto',
+                      left:
+                        cintillo.watermark?.position === 'top-left' || cintillo.watermark?.position === 'bottom-left'
+                          ? `${Math.max(3, ((cintillo.watermark.marginPx ?? 20) / 1080) * 100)}%`
+                          : cintillo.watermark?.position === 'center'
+                          ? '50%'
+                          : 'auto',
+                      right:
+                        cintillo.watermark?.position === 'top-right' || cintillo.watermark?.position === 'bottom-right'
+                          ? `${Math.max(3, ((cintillo.watermark.marginPx ?? 20) / 1080) * 100)}%`
+                          : 'auto',
+                      transform: cintillo.watermark?.position === 'center' ? 'translate(-50%, -50%)' : undefined,
+                      width: `${Math.max(
+                        8,
+                        Math.min(
+                          85,
+                          (((cintillo.watermark?.originalWidth ||
+                            (mode === 'corner-logo' ? cintillo.originalWidth : 0) ||
+                            400) *
+                            (cintillo.watermark?.scalePercent ?? 100)) /
+                            100 /
+                            1080) *
+                            100
+                        )
+                      )}%`,
+                      opacity: cintillo.watermark?.opacity ?? 0.85,
+                    }}
+                  >
+                    <img
+                      src={activeLogoUrl}
+                      alt="Logo preview"
+                      className="w-full h-auto object-contain drop-shadow-md rounded"
+                    />
+                  </div>
+                )}
+
+                {/* DYNAMIC BANNER ON VERTICAL */}
+                {(mode === 'banner' || mode === 'both') && cintillo.objectUrl && (
+                  <div
+                    className="absolute left-0 right-0 pointer-events-none transition-all duration-200 z-15 flex items-center justify-center px-1"
+                    style={{
+                      top:
+                        cintillo.position === 'top'
+                          ? `${Math.max(2, ((cintillo.marginPx || 0) / 1350) * 100)}%`
+                          : cintillo.position === 'center'
+                          ? '50%'
+                          : 'auto',
+                      bottom:
+                        cintillo.position === 'bottom'
+                          ? `${Math.max(2, ((cintillo.marginPx || 0) / 1350) * 100)}%`
+                          : 'auto',
+                      transform: cintillo.position === 'center' ? 'translateY(-50%)' : undefined,
+                      opacity: cintillo.opacity,
+                    }}
+                  >
+                    <img
+                      src={cintillo.objectUrl}
+                      alt="Cintillo en Vertical"
+                      className="object-contain drop-shadow-md rounded"
+                      style={{
+                        width:
+                          cintillo.fitMode === 'full-width'
+                            ? '100%'
+                            : cintillo.fitMode === 'scale'
+                            ? `${Math.max(
+                                20,
+                                Math.min(
+                                  100,
+                                  (((cintillo.originalWidth || 1080) * (cintillo.scalePercent ?? 100)) / 100 / 1080) * 100
+                                )
+                              )}%`
+                            : 'auto',
+                        maxHeight:
+                          cintillo.fitMode === 'height-percent'
+                            ? `${cintillo.heightPercent}%`
+                            : '32%',
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Horizontal Preview Card */}
-            <div className="bg-slate-900 rounded-lg p-2.5 flex flex-col justify-between aspect-16/10 border border-slate-800 relative overflow-hidden group shadow-inner">
-              <div className="flex items-center justify-between w-full z-10">
-                <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">
+            {/* 2. Horizontal Preview Card (16:10 / 5:4 Ratio) */}
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between px-1 text-[11px]">
+                <span className="font-bold text-emerald-700 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block" />
                   Horizontal (5:4 / 16:9)
                 </span>
-
-                {(mode === 'corner-logo' || mode === 'both') &&
-                  activeLogoUrl &&
-                  (cintillo.watermark?.position || 'top-right') === 'top-right' && (
-                    <img
-                      src={activeLogoUrl}
-                      alt="Corner logo preview"
-                      className="h-6 w-6 object-contain rounded"
-                      style={{ opacity: cintillo.watermark?.opacity ?? 0.85 }}
-                    />
-                  )}
+                <span className="text-[10px] text-slate-400 font-mono">1920 × 1200</span>
               </div>
 
-              {/* Other corner positions on horizontal */}
-              {(mode === 'corner-logo' || mode === 'both') && activeLogoUrl && (
-                <>
-                  {(cintillo.watermark?.position || 'top-right') === 'top-left' && (
-                    <img
-                      src={activeLogoUrl}
-                      alt="Corner logo preview"
-                      className="absolute top-7 left-2 h-6 w-6 object-contain z-10"
-                      style={{ opacity: cintillo.watermark?.opacity ?? 0.85 }}
-                    />
-                  )}
-                  {cintillo.watermark?.position === 'center' && (
-                    <img
-                      src={activeLogoUrl}
-                      alt="Center watermark preview"
-                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-8 w-8 object-contain z-10"
-                      style={{ opacity: cintillo.watermark?.opacity ?? 0.85 }}
-                    />
-                  )}
-                  {cintillo.watermark?.position === 'bottom-left' && (
-                    <img
-                      src={activeLogoUrl}
-                      alt="Corner logo preview"
-                      className="absolute bottom-8 left-2 h-6 w-6 object-contain z-10"
-                      style={{ opacity: cintillo.watermark?.opacity ?? 0.85 }}
-                    />
-                  )}
-                  {cintillo.watermark?.position === 'bottom-right' && (
-                    <img
-                      src={activeLogoUrl}
-                      alt="Corner logo preview"
-                      className="absolute bottom-8 right-2 h-6 w-6 object-contain z-10"
-                      style={{ opacity: cintillo.watermark?.opacity ?? 0.85 }}
-                    />
-                  )}
-                </>
-              )}
-
-              <div className="text-[10px] text-slate-500 self-center my-auto">Foto Horizontal</div>
-
-              {/* Banner on horizontal */}
-              {(mode === 'banner' || mode === 'both') && cintillo.objectUrl ? (
-                <div
-                  className="w-full bg-black/40 border border-white/10 rounded p-1 flex items-center justify-center z-10"
-                  style={{
-                    alignSelf: cintillo.position === 'top' ? 'flex-start' : cintillo.position === 'center' ? 'center' : 'flex-end',
-                  }}
-                >
-                  <img
-                    src={
-                      cintillo.separateByOrientation && cintillo.horizontalCintillo?.objectUrl
-                        ? cintillo.horizontalCintillo.objectUrl
-                        : cintillo.objectUrl
-                    }
-                    alt="Cintillo en Horizontal"
-                    className="max-h-4 object-contain"
-                    style={{ opacity: cintillo.opacity }}
-                  />
+              <div
+                className="w-full bg-linear-to-b from-slate-900 via-slate-800 to-indigo-950 rounded-xl border border-slate-700/80 relative overflow-hidden shadow-inner select-none transition-all"
+                style={{ aspectRatio: '16 / 10' }}
+              >
+                {/* Photo Mock Silhouette Background */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-20">
+                  <div className="w-14 h-14 rounded-full border-2 border-dashed border-white/40 mb-1.5 flex items-center justify-center">
+                    <ImageIcon className="w-7 h-7 text-white/50" />
+                  </div>
+                  <span className="text-[10px] text-white/60 tracking-wider uppercase font-semibold">Foto Horizontal</span>
                 </div>
-              ) : (
-                <div className="h-1" />
-              )}
+
+                {/* Interactive Clickable Hotspots for fast positioning */}
+                {(mode === 'corner-logo' || mode === 'both') && (
+                  <div className="absolute inset-0 z-10 grid grid-cols-3 grid-rows-3 p-1 pointer-events-auto">
+                    <button
+                      type="button"
+                      title="Mover a Superior Izquierda"
+                      onClick={() =>
+                        onChange({
+                          ...cintillo,
+                          watermark: { ...cintillo.watermark, position: 'top-left' },
+                        })
+                      }
+                      className="cursor-pointer hover:bg-white/10 rounded transition-colors"
+                    />
+                    <div />
+                    <button
+                      type="button"
+                      title="Mover a Superior Derecha"
+                      onClick={() =>
+                        onChange({
+                          ...cintillo,
+                          watermark: { ...cintillo.watermark, position: 'top-right' },
+                        })
+                      }
+                      className="cursor-pointer hover:bg-white/10 rounded transition-colors"
+                    />
+                    <div />
+                    <button
+                      type="button"
+                      title="Mover al Centro"
+                      onClick={() =>
+                        onChange({
+                          ...cintillo,
+                          watermark: { ...cintillo.watermark, position: 'center' },
+                        })
+                      }
+                      className="cursor-pointer hover:bg-white/10 rounded transition-colors"
+                    />
+                    <div />
+                    <button
+                      type="button"
+                      title="Mover a Inferior Izquierda"
+                      onClick={() =>
+                        onChange({
+                          ...cintillo,
+                          watermark: { ...cintillo.watermark, position: 'bottom-left' },
+                        })
+                      }
+                      className="cursor-pointer hover:bg-white/10 rounded transition-colors"
+                    />
+                    <div />
+                    <button
+                      type="button"
+                      title="Mover a Inferior Derecha"
+                      onClick={() =>
+                        onChange({
+                          ...cintillo,
+                          watermark: { ...cintillo.watermark, position: 'bottom-right' },
+                        })
+                      }
+                      className="cursor-pointer hover:bg-white/10 rounded transition-colors"
+                    />
+                  </div>
+                )}
+
+                {/* DYNAMIC WATERMARK / LOGO ON HORIZONTAL */}
+                {(mode === 'corner-logo' || mode === 'both') && activeLogoUrl && (
+                  <div
+                    className="absolute pointer-events-none transition-all duration-200 z-20 flex items-center justify-center"
+                    style={{
+                      top:
+                        cintillo.watermark?.position === 'top-left' || cintillo.watermark?.position === 'top-right'
+                          ? `${Math.max(3, ((cintillo.watermark.marginPx ?? 20) / 1200) * 100)}%`
+                          : cintillo.watermark?.position === 'center'
+                          ? '50%'
+                          : 'auto',
+                      bottom:
+                        cintillo.watermark?.position === 'bottom-left' || cintillo.watermark?.position === 'bottom-right'
+                          ? `${Math.max(3, ((cintillo.watermark.marginPx ?? 20) / 1200) * 100)}%`
+                          : 'auto',
+                      left:
+                        cintillo.watermark?.position === 'top-left' || cintillo.watermark?.position === 'bottom-left'
+                          ? `${Math.max(3, ((cintillo.watermark.marginPx ?? 20) / 1920) * 100)}%`
+                          : cintillo.watermark?.position === 'center'
+                          ? '50%'
+                          : 'auto',
+                      right:
+                        cintillo.watermark?.position === 'top-right' || cintillo.watermark?.position === 'bottom-right'
+                          ? `${Math.max(3, ((cintillo.watermark.marginPx ?? 20) / 1920) * 100)}%`
+                          : 'auto',
+                      transform: cintillo.watermark?.position === 'center' ? 'translate(-50%, -50%)' : undefined,
+                      width: `${Math.max(
+                        6,
+                        Math.min(
+                          75,
+                          (((cintillo.watermark?.originalWidth ||
+                            (mode === 'corner-logo' ? cintillo.originalWidth : 0) ||
+                            400) *
+                            (cintillo.watermark?.scalePercent ?? 100)) /
+                            100 /
+                            1920) *
+                            100
+                        )
+                      )}%`,
+                      opacity: cintillo.watermark?.opacity ?? 0.85,
+                    }}
+                  >
+                    <img
+                      src={activeLogoUrl}
+                      alt="Logo horizontal preview"
+                      className="w-full h-auto object-contain drop-shadow-md rounded"
+                    />
+                  </div>
+                )}
+
+                {/* DYNAMIC BANNER ON HORIZONTAL */}
+                {(mode === 'banner' || mode === 'both') && cintillo.objectUrl && (
+                  <div
+                    className="absolute left-0 right-0 pointer-events-none transition-all duration-200 z-15 flex items-center justify-center px-1"
+                    style={{
+                      top:
+                        cintillo.position === 'top'
+                          ? `${Math.max(2, ((cintillo.marginPx || 0) / 1200) * 100)}%`
+                          : cintillo.position === 'center'
+                          ? '50%'
+                          : 'auto',
+                      bottom:
+                        cintillo.position === 'bottom'
+                          ? `${Math.max(2, ((cintillo.marginPx || 0) / 1200) * 100)}%`
+                          : 'auto',
+                      transform: cintillo.position === 'center' ? 'translateY(-50%)' : undefined,
+                      opacity: cintillo.opacity,
+                    }}
+                  >
+                    <img
+                      src={
+                        cintillo.separateByOrientation && cintillo.horizontalCintillo?.objectUrl
+                          ? cintillo.horizontalCintillo.objectUrl
+                          : cintillo.objectUrl
+                      }
+                      alt="Cintillo en Horizontal"
+                      className="object-contain drop-shadow-md rounded"
+                      style={{
+                        width:
+                          cintillo.fitMode === 'full-width'
+                            ? '100%'
+                            : cintillo.fitMode === 'scale'
+                            ? `${Math.max(
+                                20,
+                                Math.min(
+                                  100,
+                                  (((cintillo.originalWidth || 1920) * (cintillo.scalePercent ?? 100)) / 100 / 1920) * 100
+                                )
+                              )}%`
+                            : 'auto',
+                        maxHeight:
+                          cintillo.fitMode === 'height-percent'
+                            ? `${cintillo.heightPercent}%`
+                            : '26%',
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

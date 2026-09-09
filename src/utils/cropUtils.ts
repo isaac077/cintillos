@@ -259,15 +259,23 @@ export function drawWatermarkOnCanvas(
   if (!origW || !origH) return;
 
   const ratio = origW / origH;
-  // Size watermark relative to min dimension of the canvas so it scales proportionally
-  const minDim = Math.min(canvasWidth, canvasHeight);
-  const scalePercent = watermark?.scalePercent || 18;
-  let drawW = (minDim * scalePercent) / 100;
-  let drawH = drawW / ratio;
+  // 100% scale means exactly 1:1 original natural pixel size of the watermark/logo image
+  const scalePercent = watermark?.scalePercent ?? 100;
+  let drawW = Math.round((origW * scalePercent) / 100);
+  let drawH = Math.round((origH * scalePercent) / 100);
 
-  // Margin scaled to resolution (relative to 1080p base)
-  const scaleFactor = Math.max(0.6, minDim / 1080);
-  const margin = Math.round((watermark?.marginPx ?? 24) * scaleFactor);
+  const margin = Math.round(watermark?.marginPx ?? 20);
+
+  // If the drawn size exceeds the available canvas area, fit proportionally inside bounds
+  const maxW = Math.max(10, canvasWidth - margin * 2);
+  const maxH = Math.max(10, canvasHeight - margin * 2);
+  if (drawW > maxW || drawH > maxH) {
+    const factor = Math.min(maxW / drawW, maxH / drawH);
+    if (factor < 1) {
+      drawW = Math.round(drawW * factor);
+      drawH = Math.round(drawW / ratio);
+    }
+  }
 
   let drawX = margin;
   let drawY = margin;
@@ -351,10 +359,14 @@ export function drawCintilloOnCanvas(
       drawH = drawW / cintilloRatio;
     }
   } else if (cintillo.fitMode === 'scale') {
-    // Relative scale multiplier
-    const baseW = isHorizontalCanvas ? canvasWidth * 0.75 : canvasWidth * 0.95;
-    drawW = (baseW * cintillo.scalePercent) / 100;
-    drawH = drawW / cintilloRatio;
+    // 100% scale means 1:1 original pixel dimensions of the banner image!
+    const scale = (cintillo.scalePercent ?? 100) / 100;
+    drawW = Math.round(origW * scale);
+    drawH = Math.round(origH * scale);
+    if (drawW > canvasWidth - margin * 2) {
+      drawW = canvasWidth - margin * 2;
+      drawH = Math.round(drawW / cintilloRatio);
+    }
   }
 
   // Calculate X position (centered horizontally by default)
