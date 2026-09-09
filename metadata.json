@@ -1,0 +1,8 @@
+{
+  "name": "Recortador de Fotos y Cintillo",
+  "description": "Recorta fotos en lote (verticales y horizontales), aplica cintillos faldón, marcas de agua o logos en esquinas (o ambos a la vez) y exporta en alta calidad.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
