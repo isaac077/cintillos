@@ -3,7 +3,7 @@ import { AspectRatioId, CintilloConfig, CropRect, PhotoItem } from '../types';
 import { ASPECT_RATIOS, clampCrop, getAspectRatio, getDefaultCrop } from '../utils/cropUtils';
 import { 
   X, Check, ChevronLeft, ChevronRight, Maximize2, 
-  AlignCenter, Eye, EyeOff, Layers
+  AlignCenter, Eye, EyeOff, Layers, Pencil
 } from 'lucide-react';
 
 interface CropModalProps {
@@ -31,15 +31,19 @@ export const CropModal: React.FC<CropModalProps> = ({
   const [crop, setCrop] = useState<CropRect>(photo.cropRect);
   const [showCintilloPreview, setShowCintilloPreview] = useState<boolean>(photo.applyCintillo);
   const [applyToAll, setApplyToAll] = useState<boolean>(false);
+  const [modalPhotoName, setModalPhotoName] = useState<string>(photo.name);
+  const [isEditingName, setIsEditingName] = useState<boolean>(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState<{ width: number; height: number }>({ width: 600, height: 400 });
 
-  // Update crop when photo changes
+  // Update crop and name when photo changes
   useEffect(() => {
     setCurrentRatioId(photo.aspectRatioId);
     setCrop(photo.cropRect);
     setShowCintilloPreview(photo.applyCintillo);
+    setModalPhotoName(photo.name);
+    setIsEditingName(false);
   }, [photo]);
 
   // Monitor container size
@@ -221,6 +225,7 @@ export const CropModal: React.FC<CropModalProps> = ({
     onSaveCrop(
       {
         ...photo,
+        name: modalPhotoName.trim() || photo.name,
         aspectRatioId: currentRatioId,
         cropRect: crop,
         applyCintillo: showCintilloPreview,
@@ -238,13 +243,55 @@ export const CropModal: React.FC<CropModalProps> = ({
         
         {/* Top Header Bar */}
         <div className="px-5 py-3 border-b border-slate-800 flex items-center justify-between shrink-0 bg-slate-900/90">
-          <div className="flex items-center gap-3">
-            <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+          <div className="flex items-center gap-3 min-w-0 flex-1 mr-3">
+            <h3 className="text-sm sm:text-base font-bold text-white shrink-0">
               Editor de Recorte
             </h3>
-            <span className="text-xs text-slate-400 bg-slate-800 px-2.5 py-0.5 rounded-full">
+            <span className="text-xs text-slate-400 bg-slate-800 px-2.5 py-0.5 rounded-full shrink-0">
               Foto {currentIndex + 1} de {photos.length}
             </span>
+
+            {/* Photo Name editing inside modal */}
+            <div className="min-w-0 max-w-xs sm:max-w-md">
+              {isEditingName ? (
+                <div className="flex items-center gap-1">
+                  <input
+                    type="text"
+                    value={modalPhotoName}
+                    onChange={(e) => setModalPhotoName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') setIsEditingName(false);
+                      if (e.key === 'Escape') {
+                        setModalPhotoName(photo.name);
+                        setIsEditingName(false);
+                      }
+                    }}
+                    autoFocus
+                    className="px-2 py-0.5 text-xs font-semibold bg-slate-800 border border-indigo-500 rounded text-white focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingName(false)}
+                    className="p-1 text-emerald-400 hover:text-emerald-300 rounded cursor-pointer"
+                    title="Guardar nombre"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingName(true)}
+                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-md hover:bg-slate-800 text-left group transition-colors cursor-pointer max-w-full"
+                  title="Clic para cambiar nombre de esta foto"
+                >
+                  <span className="text-xs text-slate-300 font-semibold truncate group-hover:text-indigo-400">
+                    {modalPhotoName}
+                  </span>
+                  <Pencil className="w-3 h-3 text-slate-500 group-hover:text-indigo-400 shrink-0" />
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -408,108 +455,141 @@ export const CropModal: React.FC<CropModalProps> = ({
               </div>
 
               {/* Live Overlays in Cropper (Banner and/or Corner Logo) */}
-              {showCintilloPreview && (cintillo.overlayMode === 'banner' || cintillo.overlayMode === 'both') && (cintillo.objectUrl || (cintillo.separateByOrientation && cintillo.horizontalCintillo?.objectUrl)) && (
-                <div
-                  className="absolute inset-0 pointer-events-none overflow-hidden flex z-10"
-                  style={{
-                    alignItems:
-                      cintillo.position === 'top'
-                        ? 'flex-start'
-                        : cintillo.position === 'bottom'
-                        ? 'flex-end'
-                        : 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <img
-                    src={
-                      cintillo.separateByOrientation && crop.width > crop.height && cintillo.horizontalCintillo?.objectUrl
-                        ? cintillo.horizontalCintillo.objectUrl
-                        : cintillo.objectUrl || ''
-                    }
-                    alt="Cintillo preview"
-                    style={{
-                      opacity: cintillo.opacity,
-                      width:
-                        cintillo.fitMode === 'full-width'
-                          ? '100%'
-                          : cintillo.fitMode === 'scale'
-                          ? `${Math.min(
-                              screenCrop.width,
-                              (cintillo.originalWidth || 1000) * ((cintillo.scalePercent ?? 100) / 100) * scale
-                            )}px`
-                          : 'auto',
-                      maxHeight:
-                        cintillo.fitMode === 'height-percent'
-                          ? `${cintillo.heightPercent}%`
-                          : crop.width > crop.height
-                          ? `${cintillo.maxHeightPercentHorizontal || 16}%`
-                          : '35%',
-                      margin: `${(cintillo.marginPx || 0) * scale}px`,
-                      objectFit: 'contain',
-                    }}
-                    className="transition-all"
-                  />
-                </div>
-              )}
+              {showCintilloPreview && (cintillo.overlayMode === 'banner' || cintillo.overlayMode === 'both') && (cintillo.objectUrl || (cintillo.separateByOrientation && cintillo.horizontalCintillo?.objectUrl)) && (() => {
+                const isHorizontalCrop = crop.width > crop.height;
+                const refWidth = isHorizontalCrop ? 1920 : 1080;
+                const bannerMargin = Math.round((cintillo.marginPx || 0) * (screenCrop.width / refWidth));
+                const bannerScaleRatio = Math.min(1.0, Math.max(0.15, (((cintillo.originalWidth || refWidth) * ((cintillo.scalePercent ?? 100) / 100)) / refWidth)));
 
-              {/* Live Corner Logo / Watermark Overlay */}
-              {showCintilloPreview &&
-                (cintillo.overlayMode === 'corner-logo' || cintillo.overlayMode === 'both') &&
-                (cintillo.watermark?.objectUrl || (cintillo.overlayMode === 'corner-logo' && cintillo.objectUrl)) && (
+                return (
                   <div
-                    className="absolute pointer-events-none z-10 transition-all"
+                    className="absolute inset-0 pointer-events-none overflow-hidden flex z-10"
                     style={{
-                      top:
-                        cintillo.watermark?.position?.startsWith('top')
-                          ? `${(cintillo.watermark.marginPx ?? 20) * scale}px`
-                          : cintillo.watermark?.position === 'center'
-                          ? '50%'
-                          : 'auto',
-                      bottom:
-                        cintillo.watermark?.position?.startsWith('bottom')
-                          ? `${(cintillo.watermark.marginPx ?? 20) * scale}px`
-                          : 'auto',
-                      left:
-                        cintillo.watermark?.position?.endsWith('left')
-                          ? `${(cintillo.watermark.marginPx ?? 20) * scale}px`
-                          : cintillo.watermark?.position === 'center'
-                          ? '50%'
-                          : 'auto',
-                      right:
-                        cintillo.watermark?.position?.endsWith('right')
-                          ? `${(cintillo.watermark.marginPx ?? 20) * scale}px`
-                          : 'auto',
-                      transform:
-                        cintillo.watermark?.position === 'center' ? 'translate(-50%, -50%)' : undefined,
-                      width: `${Math.min(
-                        screenCrop.width - Math.max(0, cintillo.watermark?.marginPx ?? 20) * scale * 2,
-                        Math.max(
-                          20,
-                          (cintillo.watermark?.originalWidth ||
-                            (cintillo.overlayMode === 'corner-logo' ? cintillo.originalWidth : 0) ||
-                            350) *
-                            ((cintillo.watermark?.scalePercent ?? 100) / 100) *
-                            scale
-                        )
-                      )}px`,
+                      alignItems:
+                        cintillo.position?.startsWith('top') || cintillo.position === 'top'
+                          ? 'flex-start'
+                          : cintillo.position?.startsWith('bottom') || cintillo.position === 'bottom'
+                          ? 'flex-end'
+                          : 'center',
+                      justifyContent:
+                        cintillo.position?.endsWith('left')
+                          ? 'flex-start'
+                          : cintillo.position?.endsWith('right')
+                          ? 'flex-end'
+                          : 'center',
                     }}
                   >
                     <img
                       src={
-                        cintillo.watermark?.objectUrl ||
-                        (cintillo.overlayMode === 'corner-logo' ? cintillo.objectUrl || '' : '')
+                        cintillo.separateByOrientation && isHorizontalCrop && cintillo.horizontalCintillo?.objectUrl
+                          ? cintillo.horizontalCintillo.objectUrl
+                          : cintillo.objectUrl || ''
                       }
-                      alt="Watermark preview"
+                      alt="Cintillo preview"
                       style={{
-                        opacity: cintillo.watermark?.opacity ?? 0.85,
-                        width: '100%',
-                        height: 'auto',
-                        objectFit: 'contain',
+                        opacity: cintillo.opacity,
+                        width:
+                          cintillo.fitMode === 'crop-sides'
+                            ? '100%'
+                            : cintillo.fitMode === 'full-width'
+                            ? '100%'
+                            : cintillo.fitMode === 'scale'
+                            ? `${Math.max(40, Math.round(screenCrop.width * bannerScaleRatio))}px`
+                            : 'auto',
+                        height:
+                          cintillo.fitMode === 'crop-sides'
+                            ? `${cintillo.heightPercent || 14}%`
+                            : cintillo.fitMode === 'height-percent'
+                            ? `${cintillo.heightPercent}%`
+                            : undefined,
+                        maxHeight:
+                          cintillo.fitMode === 'crop-sides'
+                            ? undefined
+                            : cintillo.fitMode === 'height-percent'
+                            ? `${cintillo.heightPercent}%`
+                            : isHorizontalCrop
+                            ? `${Math.max(20, cintillo.maxHeightPercentHorizontal || 22)}%`
+                            : '35%',
+                        margin: `${bannerMargin}px`,
+                        objectFit: cintillo.fitMode === 'crop-sides' || (cintillo.fitMode === 'full-width' && isHorizontalCrop) ? 'cover' : 'contain',
                       }}
+                      className="transition-all"
                     />
                   </div>
-                )}
+                );
+              })()}
+
+              {/* Live Corner Logo / Watermark Overlay */}
+              {showCintilloPreview &&
+                (cintillo.overlayMode === 'corner-logo' || cintillo.overlayMode === 'both') &&
+                (cintillo.watermark?.objectUrl || (cintillo.overlayMode === 'corner-logo' && cintillo.objectUrl)) && (() => {
+                  const isHorizontalCrop = crop.width > crop.height;
+                  const refWidth = isHorizontalCrop ? 1920 : 1080;
+                  const activeLogoOrigW =
+                    cintillo.watermark?.originalWidth ||
+                    (cintillo.overlayMode === 'corner-logo' ? cintillo.originalWidth : 0) ||
+                    350;
+                  const activeLogoScale = cintillo.watermark?.scalePercent ?? 100;
+                  const watermarkRatio = Math.min(
+                    0.65,
+                    Math.max(0.08, (activeLogoOrigW * (activeLogoScale / 100)) / refWidth)
+                  );
+                  const watermarkScreenWidth = Math.max(24, Math.round(screenCrop.width * watermarkRatio));
+                  const watermarkScreenMargin = Math.round(
+                    (cintillo.watermark?.marginPx ?? 20) * (screenCrop.width / refWidth)
+                  );
+
+                  return (
+                    <div
+                      className="absolute pointer-events-none z-10 transition-all"
+                      style={{
+                        top:
+                          cintillo.watermark?.position?.startsWith('top')
+                            ? `${watermarkScreenMargin}px`
+                            : cintillo.watermark?.position?.startsWith('center') || cintillo.watermark?.position === 'center'
+                            ? '50%'
+                            : 'auto',
+                        bottom:
+                          cintillo.watermark?.position?.startsWith('bottom')
+                            ? `${watermarkScreenMargin}px`
+                            : 'auto',
+                        left:
+                          cintillo.watermark?.position?.endsWith('left')
+                            ? `${watermarkScreenMargin}px`
+                            : cintillo.watermark?.position?.endsWith('center') || cintillo.watermark?.position === 'center'
+                            ? '50%'
+                            : 'auto',
+                        right:
+                          cintillo.watermark?.position?.endsWith('right')
+                            ? `${watermarkScreenMargin}px`
+                            : 'auto',
+                        transform:
+                          cintillo.watermark?.position === 'center'
+                            ? 'translate(-50%, -50%)'
+                            : cintillo.watermark?.position === 'top-center' || cintillo.watermark?.position === 'bottom-center'
+                            ? 'translateX(-50%)'
+                            : cintillo.watermark?.position === 'center-left' || cintillo.watermark?.position === 'center-right'
+                            ? 'translateY(-50%)'
+                            : undefined,
+                        width: `${watermarkScreenWidth}px`,
+                      }}
+                    >
+                      <img
+                        src={
+                          cintillo.watermark?.objectUrl ||
+                          (cintillo.overlayMode === 'corner-logo' ? cintillo.objectUrl || '' : '')
+                        }
+                        alt="Watermark preview"
+                        style={{
+                          opacity: cintillo.watermark?.opacity ?? 0.85,
+                          width: '100%',
+                          height: 'auto',
+                          objectFit: 'contain',
+                        }}
+                      />
+                    </div>
+                  );
+                })()}
 
               {/* Corner Handles */}
               <div

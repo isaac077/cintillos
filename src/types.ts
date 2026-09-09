@@ -46,9 +46,20 @@ export interface PhotoItem {
   previewUrl?: string;
 }
 
-export type CintilloPosition = 'bottom' | 'top' | 'center' | 'custom';
+export type NinePointPosition =
+  | 'top-left'
+  | 'top-center'
+  | 'top-right'
+  | 'center-left'
+  | 'center'
+  | 'center-right'
+  | 'bottom-left'
+  | 'bottom-center'
+  | 'bottom-right';
 
-export type CornerPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center';
+export type CintilloPosition = NinePointPosition | 'top' | 'bottom' | 'custom';
+
+export type CornerPosition = NinePointPosition;
 
 export type OverlayMode = 'banner' | 'corner-logo' | 'both';
 
@@ -73,7 +84,7 @@ export interface CintilloConfig {
   position: CintilloPosition;
   customYPercent: number; // 0 to 100 from top
   // Scaling options:
-  fitMode: 'full-width' | 'height-percent' | 'scale';
+  fitMode: 'crop-sides' | 'full-width' | 'height-percent' | 'scale';
   heightPercent: number; // e.g. 14% of image height
   scalePercent: number; // 100 = 100% native real size (1:1 pixels)
   opacity: number; // 0 to 1
@@ -106,5 +117,6 @@ export interface ExportSettings {
   format: ExportFormat;
   quality: number; // 0.8 - 1.0 (for jpeg/webp)
   resolutionMode: 'original' | 'instagram' | '4k';
+  namingStyle?: 'exact' | 'sequential-name' | 'sequential-ratio';
 }
 

@@ -11,9 +11,10 @@ import {
 } from '../utils/cropUtils';
 import { 
   Download, Sliders, CheckCircle2, FileArchive, Layers, 
-  Trash2, Compass, Sparkles, Filter 
+  Trash2, Compass, Sparkles, Filter, Type
 } from 'lucide-react';
 import JSZip from 'jszip';
+import { BatchRenameModal } from './BatchRenameModal';
 
 interface BatchExportBarProps {
   photos: PhotoItem[];
@@ -23,6 +24,7 @@ interface BatchExportBarProps {
   onApplyRatioToOrientation: (ratioId: AspectRatioId, orientation: OrientationType) => void;
   onToggleCintilloAll: (apply: boolean) => void;
   onClearAll: () => void;
+  onBatchRenamePhotos?: (renamedList: { id: string; name: string }[]) => void;
 }
 
 export const BatchExportBar: React.FC<BatchExportBarProps> = ({
@@ -33,14 +35,18 @@ export const BatchExportBar: React.FC<BatchExportBarProps> = ({
   onApplyRatioToOrientation,
   onToggleCintilloAll,
   onClearAll,
+  onBatchRenamePhotos,
 }) => {
   const [settings, setSettings] = useState<ExportSettings>({
     format: 'jpeg',
-    quality: 0.98,
+    quality: 1.0,
     resolutionMode: 'original',
+    namingStyle: 'sequential-ratio',
   });
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showRenameModal, setShowRenameModal] = useState(false);
   const [isExportingZip, setIsExportingZip] = useState(false);
+  const [successInfo, setSuccessInfo] = useState<{ total: number; message: string } | null>(null);
   const [progress, setProgress] = useState<{ current: number; total: number; stage: string }>({
     current: 0,
     total: 0,
@@ -63,45 +69,83 @@ export const BatchExportBar: React.FC<BatchExportBarProps> = ({
     if (photos.length === 0 || isExportingZip) return;
 
     setIsExportingZip(true);
-    setProgress({ current: 0, total: photos.length, stage: 'Iniciando procesamiento en alta definición...' });
+    setProgress({ current: 0, total: photos.length, stage: 'Iniciando exportación en máxima resolución...' });
 
     try {
       const zip = new JSZip();
-      const folder = zip.folder('fotos-recortadas');
+      const usedFilenames = new Set<string>();
+      let processedCount = 0;
 
       for (let i = 0; i < photos.length; i++) {
         const photo = photos[i];
         setProgress({
           current: i + 1,
           total: photos.length,
-          stage: `Procesando ${photo.name} (${i + 1}/${photos.length})...`,
+          stage: `Procesando foto ${i + 1} de ${photos.length}: ${photo.name}...`,
         });
 
-        const canvas = await renderProcessedImage(photo, cintillo, settings);
-        const blob = await canvasToBlob(canvas, settings.format, settings.quality);
+        try {
+          const canvas = await renderProcessedImage(photo, cintillo, settings);
+          const blob = await canvasToBlob(canvas, settings.format, settings.quality);
 
-        const cleanName = photo.name.replace(/\.[^/.]+$/, '');
-        const ext = settings.format === 'jpeg' ? 'jpg' : settings.format;
-        const filename = `${cleanName}_${photo.aspectRatioId}.${ext}`;
+          // Clean name, remove any forbidden OS characters and replace colons in aspect ratio (Windows rejects colons!)
+          const cleanName = photo.name.replace(/\.[^/.]+$/, '').replace(/[/\\?%*:|"<>]/g, '_').trim() || 'foto';
+          const safeRatio = String(photo.aspectRatioId || 'recorte').replace(/:/g, '-');
+          const ext = settings.format === 'jpeg' ? 'jpg' : settings.format;
+          const indexStr = String(i + 1).padStart(2, '0');
 
-        folder?.file(filename, blob);
+          let baseFilename = `${indexStr}_${cleanName}_${safeRatio}.${ext}`;
+          if (settings.namingStyle === 'exact') {
+            baseFilename = `${cleanName}.${ext}`;
+          } else if (settings.namingStyle === 'sequential-name') {
+            baseFilename = `${indexStr}_${cleanName}.${ext}`;
+          }
+
+          let finalFilename = baseFilename;
+          let counter = 1;
+          while (usedFilenames.has(finalFilename.toLowerCase())) {
+            if (settings.namingStyle === 'exact') {
+              finalFilename = `${cleanName}_${counter}.${ext}`;
+            } else if (settings.namingStyle === 'sequential-name') {
+              finalFilename = `${indexStr}_${cleanName}_${counter}.${ext}`;
+            } else {
+              finalFilename = `${indexStr}_${cleanName}_${safeRatio}_${counter}.${ext}`;
+            }
+            counter++;
+          }
+          usedFilenames.add(finalFilename.toLowerCase());
+
+          zip.file(finalFilename, blob);
+          processedCount++;
+        } catch (photoErr) {
+          console.error(`Error procesando foto individual ${photo.name}:`, photoErr);
+        }
+      }
+
+      if (processedCount === 0) {
+        throw new Error('No se pudo procesar ninguna foto.');
       }
 
       setProgress({
         current: photos.length,
         total: photos.length,
-        stage: 'Comprimiendo archivo ZIP...',
+        stage: `Comprimiendo archivo ZIP con las ${processedCount} fotos en máxima calidad...`,
       });
 
+      // Using STORE avoids heavy memory compression overhead on already-compressed JPEG/PNG images
       const zipBlob = await zip.generateAsync({
         type: 'blob',
-        compression: 'DEFLATE',
-        compressionOptions: { level: 6 },
+        compression: 'STORE',
       });
 
       triggerDownload(zipBlob, `fotos_recortadas_${Date.now()}.zip`);
+      setSuccessInfo({
+        total: processedCount,
+        message: `¡Se exportaron las ${processedCount} de ${photos.length} fotos con éxito en máxima resolución!`,
+      });
     } catch (err) {
       console.error('Error al exportar lote en ZIP:', err);
+      alert('Hubo un error al generar el archivo ZIP. Verifica que el navegador tenga suficiente memoria.');
     } finally {
       setIsExportingZip(false);
     }
@@ -160,6 +204,19 @@ export const BatchExportBar: React.FC<BatchExportBarProps> = ({
 
           {/* Right: Export settings & Batch Download Button */}
           <div className="flex items-center gap-2.5 shrink-0 justify-end">
+            {onBatchRenamePhotos && (
+              <button
+                id="btn-batch-rename"
+                type="button"
+                onClick={() => setShowRenameModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 transition-colors cursor-pointer"
+                title="Renombrar fotos en lote (Secuencial, prefijos, buscar y reemplazar)"
+              >
+                <Type className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Renombrar ({photos.length})</span>
+              </button>
+            )}
+
             <button
               id="btn-export-settings"
               type="button"
@@ -380,6 +437,51 @@ export const BatchExportBar: React.FC<BatchExportBarProps> = ({
               </div>
             </div>
 
+            {/* Naming Style in ZIP */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700">Formato del Nombre en el ZIP</label>
+              <div className="space-y-1.5">
+                {[
+                  {
+                    id: 'sequential-ratio',
+                    title: 'Numerado con Formato (Recomendado)',
+                    desc: 'ej. 01_Boda_4-5.jpg (Permite mantener orden y saber el recorte)',
+                  },
+                  {
+                    id: 'exact',
+                    title: 'Nombre Exacto Personalizado',
+                    desc: 'ej. Boda_01.jpg (Ideal si ya renombraste las fotos a tu gusto)',
+                  },
+                  {
+                    id: 'sequential-name',
+                    title: 'Número + Nombre Limpio',
+                    desc: 'ej. 01_Boda.jpg (Mantiene orden alfabético)',
+                  },
+                ].map((style) => (
+                  <label
+                    key={style.id}
+                    className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all ${
+                      (settings.namingStyle || 'sequential-ratio') === style.id
+                        ? 'border-indigo-600 bg-indigo-50/50'
+                        : 'border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="namingStyle"
+                      checked={(settings.namingStyle || 'sequential-ratio') === style.id}
+                      onChange={() => setSettings({ ...settings, namingStyle: style.id as any })}
+                      className="mt-0.5 accent-indigo-600"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-slate-800">{style.title}</div>
+                      <div className="text-[11px] text-slate-500 leading-tight mt-0.5">{style.desc}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
             <div className="pt-2">
               <button
                 type="button"
@@ -427,6 +529,57 @@ export const BatchExportBar: React.FC<BatchExportBarProps> = ({
             </p>
           </div>
         </div>
+      )}
+
+      {/* Success Notification Modal */}
+      {successInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-sm w-full p-6 shadow-2xl text-center space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+
+            <div>
+              <h4 className="text-base font-bold text-slate-900">¡Descarga Completada!</h4>
+              <p className="text-xs text-slate-600 mt-1">{successInfo.message}</p>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
+              <div className="flex justify-between">
+                <span>Fotos empaquetadas:</span>
+                <span className="font-bold text-slate-900">{successInfo.total} archivos</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Calidad:</span>
+                <span className="font-bold text-emerald-600">Máxima nativa (100%)</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Compatibilidad:</span>
+                <span className="font-bold text-indigo-600">Windows / Mac / Móvil</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSuccessInfo(null)}
+              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors"
+            >
+              Cerrar y Continuar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Rename Modal */}
+      {onBatchRenamePhotos && (
+        <BatchRenameModal
+          isOpen={showRenameModal}
+          photos={photos}
+          onClose={() => setShowRenameModal(false)}
+          onApplyRename={(renamedList) => {
+            onBatchRenamePhotos(renamedList);
+          }}
+        />
       )}
     </>
   );

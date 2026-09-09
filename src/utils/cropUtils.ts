@@ -234,7 +234,16 @@ export async function renderProcessedImage(
     if (watermarkUrl) {
       try {
         const watermarkImg = await loadImage(watermarkUrl);
-        drawWatermarkOnCanvas(ctx, watermarkImg, cintillo.watermark, targetWidth, targetHeight);
+        const watermarkConfig = cintillo.watermark?.objectUrl
+          ? cintillo.watermark
+          : {
+              ...cintillo.watermark,
+              scalePercent: cintillo.watermark?.scalePercent ?? cintillo.scalePercent ?? 100,
+              position: cintillo.watermark?.position ?? cintillo.position ?? 'top-right',
+              opacity: cintillo.watermark?.opacity ?? cintillo.opacity ?? 0.85,
+              marginPx: cintillo.watermark?.marginPx ?? cintillo.marginPx ?? 20,
+            };
+        drawWatermarkOnCanvas(ctx, watermarkImg, watermarkConfig, targetWidth, targetHeight);
       } catch (err) {
         console.error('Error cargando logo o marca de agua:', err);
       }
@@ -246,6 +255,7 @@ export async function renderProcessedImage(
 
 /**
  * Draw logo or watermark in corner (or center) onto target canvas
+ * Proportionally scaled according to canvas resolution to guarantee clarity on large photos!
  */
 export function drawWatermarkOnCanvas(
   ctx: CanvasRenderingContext2D,
@@ -259,12 +269,19 @@ export function drawWatermarkOnCanvas(
   if (!origW || !origH) return;
 
   const ratio = origW / origH;
-  // 100% scale means exactly 1:1 original natural pixel size of the watermark/logo image
+  const isHorizontalCanvas = canvasWidth > canvasHeight;
+  const refWidth = isHorizontalCanvas ? 1920 : 1080;
+  // Resolution scale multiplier relative to reference preview width
+  const scaleMultiplier = Math.max(0.2, canvasWidth / refWidth);
   const scalePercent = watermark?.scalePercent ?? 100;
-  let drawW = Math.round((origW * scalePercent) / 100);
-  let drawH = Math.round((origH * scalePercent) / 100);
 
-  const margin = Math.round(watermark?.marginPx ?? 20);
+  // Proportionally scaled dimensions so it maintains consistent visual scale across high-res photos
+  let drawW = Math.round((origW * (scalePercent / 100)) * scaleMultiplier);
+  let drawH = Math.round(drawW / ratio);
+
+  // Scaled margin proportional to canvas resolution
+  const baseMargin = Math.round(watermark?.marginPx ?? 20);
+  const margin = Math.round(baseMargin * scaleMultiplier);
 
   // If the drawn size exceeds the available canvas area, fit proportionally inside bounds
   const effectiveMarginForBound = Math.max(0, margin);
@@ -278,32 +295,28 @@ export function drawWatermarkOnCanvas(
     }
   }
 
-  let drawX = margin;
-  let drawY = margin;
+  const pos: string = watermark?.position || 'top-right';
 
-  const position = watermark?.position || 'top-right';
+  // Calculate 9-point X position
+  let drawX: number;
+  if (pos.endsWith('left')) {
+    drawX = margin;
+  } else if (pos.endsWith('right')) {
+    drawX = canvasWidth - drawW - margin;
+  } else {
+    // center, top-center, bottom-center
+    drawX = Math.round((canvasWidth - drawW) / 2);
+  }
 
-  switch (position) {
-    case 'top-left':
-      drawX = margin;
-      drawY = margin;
-      break;
-    case 'top-right':
-      drawX = canvasWidth - drawW - margin;
-      drawY = margin;
-      break;
-    case 'bottom-left':
-      drawX = margin;
-      drawY = canvasHeight - drawH - margin;
-      break;
-    case 'bottom-right':
-      drawX = canvasWidth - drawW - margin;
-      drawY = canvasHeight - drawH - margin;
-      break;
-    case 'center':
-      drawX = Math.round((canvasWidth - drawW) / 2);
-      drawY = Math.round((canvasHeight - drawH) / 2);
-      break;
+  // Calculate 9-point Y position
+  let drawY: number;
+  if (pos.startsWith('top')) {
+    drawY = margin;
+  } else if (pos.startsWith('bottom')) {
+    drawY = canvasHeight - drawH - margin;
+  } else {
+    // center, center-left, center-right
+    drawY = Math.round((canvasHeight - drawH) / 2);
   }
 
   ctx.save();
@@ -314,7 +327,8 @@ export function drawWatermarkOnCanvas(
 
 /**
  * Draw cintillo banner onto target context with configured sizing and positioning
- * Intelligent adaptive logic ensures it works seamlessly across vertical and horizontal formats!
+ * Supports 9 anchor points and resolution-independent scaling so banners never
+ * shrink into small smudges on high-resolution photos!
  */
 export function drawCintilloOnCanvas(
   ctx: CanvasRenderingContext2D,
@@ -328,72 +342,106 @@ export function drawCintilloOnCanvas(
   if (!origW || !origH) return;
 
   const isHorizontalCanvas = canvasWidth > canvasHeight;
+  const refWidth = isHorizontalCanvas ? 1920 : 1080;
+  const scaleMultiplier = Math.max(0.2, canvasWidth / refWidth);
   const cintilloRatio = origW / origH;
-  const margin = cintillo.marginPx || 0;
+  const baseMargin = cintillo.marginPx || 0;
+  const margin = Math.round(baseMargin * scaleMultiplier);
 
-  let drawW = canvasWidth;
-  let drawH = drawW / cintilloRatio;
+  let drawW = canvasWidth - margin * 2;
+  let drawH = Math.round(drawW / cintilloRatio);
 
-  if (cintillo.fitMode === 'full-width') {
+  let useSourceCrop = false;
+  let sX = 0;
+  let sY = 0;
+  let sW = origW;
+  let sH = origH;
+
+  if (cintillo.fitMode === 'crop-sides') {
+    // Keep banner height and logo scale fixed across vertical & horizontal!
+    // Excess width is cropped from sides symmetrically.
+    const targetHeightPercent = cintillo.heightPercent || 14;
+    drawH = Math.round((canvasHeight * targetHeightPercent * ((cintillo.scalePercent ?? 100) / 100)) / 100);
+    drawW = Math.round(drawH * cintilloRatio);
+
+    // If the banner is narrower than the canvas, ensure it covers the width
+    if (drawW < canvasWidth - margin * 2) {
+      drawW = canvasWidth - margin * 2;
+      drawH = Math.round(drawW / cintilloRatio);
+    }
+  } else if (cintillo.fitMode === 'full-width') {
     // Matches 100% of canvas width minus margin
     drawW = canvasWidth - margin * 2;
-    drawH = drawW / cintilloRatio;
+    drawH = Math.round(drawW / cintilloRatio);
 
     // Smart Adaptive behavior for horizontal photos:
-    // If it's a horizontal canvas and adaptiveBehavior is 'auto' (or 'height-limited'):
-    // When a banner is full width on a landscape photo, it can become too tall vertically.
-    // We cap the height to maxHeightPercentHorizontal (default 16%) so it never obscures the subject!
-    if (isHorizontalCanvas && cintillo.adaptiveBehavior !== 'full-width-always') {
-      const maxH = (canvasHeight * (cintillo.maxHeightPercentHorizontal || 16)) / 100;
+    // Never shrink banner width into a small patch! Keep full width coverage
+    // and adaptively crop excess height so it stays proportional.
+    if (isHorizontalCanvas) {
+      const maxH = Math.round((canvasHeight * (cintillo.maxHeightPercentHorizontal || 22)) / 100);
       if (drawH > maxH) {
+        useSourceCrop = true;
         drawH = maxH;
-        drawW = drawH * cintilloRatio;
+        const targetRatio = drawW / drawH;
+        sH = Math.round(origW / targetRatio);
+        sY = Math.max(0, Math.round((origH - sH) / 2));
       }
     }
   } else if (cintillo.fitMode === 'height-percent') {
     // Scales to X% of canvas height
-    const targetH = (canvasHeight * cintillo.heightPercent) / 100;
+    const targetH = Math.round((canvasHeight * cintillo.heightPercent) / 100);
     drawH = targetH;
-    drawW = drawH * cintilloRatio;
+    drawW = Math.round(drawH * cintilloRatio);
     if (drawW > canvasWidth - margin * 2) {
       drawW = canvasWidth - margin * 2;
-      drawH = drawW / cintilloRatio;
+      drawH = Math.round(drawW / cintilloRatio);
     }
   } else if (cintillo.fitMode === 'scale') {
-    // 100% scale means 1:1 original pixel dimensions of the banner image!
+    // Proportional scale relative to reference canvas resolution
     const scale = (cintillo.scalePercent ?? 100) / 100;
-    drawW = Math.round(origW * scale);
-    drawH = Math.round(origH * scale);
+    drawW = Math.round(origW * scale * scaleMultiplier);
+    drawH = Math.round(origH * scale * scaleMultiplier);
     if (drawW > canvasWidth - margin * 2) {
       drawW = canvasWidth - margin * 2;
       drawH = Math.round(drawW / cintilloRatio);
     }
   }
 
-  // Calculate X position (centered horizontally by default)
-  const drawX = Math.round((canvasWidth - drawW) / 2);
+  // Calculate 9-point X position
+  const pos = cintillo.position || 'bottom';
+  let drawX: number;
+  if (pos === 'top-left' || pos === 'center-left' || pos === 'bottom-left') {
+    drawX = margin;
+  } else if (pos === 'top-right' || pos === 'center-right' || pos === 'bottom-right') {
+    drawX = canvasWidth - drawW - margin;
+  } else {
+    // centered horizontally by default ('center', 'top', 'bottom', 'top-center', 'bottom-center', 'custom')
+    drawX = Math.round((canvasWidth - drawW) / 2);
+  }
 
-  // Calculate Y position
-  let drawY = 0;
-  switch (cintillo.position) {
-    case 'top':
-      drawY = margin;
-      break;
-    case 'bottom':
-      drawY = canvasHeight - drawH - margin;
-      break;
-    case 'center':
-      drawY = Math.round((canvasHeight - drawH) / 2);
-      break;
-    case 'custom':
-      drawY = Math.round((canvasHeight * cintillo.customYPercent) / 100 - drawH / 2);
-      break;
+  // Calculate 9-point Y position
+  let drawY: number;
+  if (pos === 'top' || pos === 'top-left' || pos === 'top-center' || pos === 'top-right') {
+    drawY = margin;
+  } else if (pos === 'bottom' || pos === 'bottom-left' || pos === 'bottom-center' || pos === 'bottom-right') {
+    // Hasta abajote (flush at bottom if margin is 0)
+    drawY = canvasHeight - drawH - margin;
+  } else if (pos === 'center' || pos === 'center-left' || pos === 'center-right') {
+    drawY = Math.round((canvasHeight - drawH) / 2);
+  } else if (pos === 'custom') {
+    drawY = Math.round((canvasHeight * (cintillo.customYPercent ?? 85)) / 100 - drawH / 2);
+  } else {
+    drawY = canvasHeight - drawH - margin;
   }
 
   // Save context state for opacity
   ctx.save();
   ctx.globalAlpha = cintillo.opacity ?? 1.0;
-  ctx.drawImage(cintilloImg, drawX, drawY, drawW, drawH);
+  if (useSourceCrop) {
+    ctx.drawImage(cintilloImg, sX, sY, sW, sH, drawX, drawY, drawW, drawH);
+  } else {
+    ctx.drawImage(cintilloImg, drawX, drawY, drawW, drawH);
+  }
   ctx.restore();
 }
 

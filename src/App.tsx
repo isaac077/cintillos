@@ -56,6 +56,20 @@ export default function App() {
     }
   };
 
+  // Batch rename photos
+  const handleBatchRenamePhotos = (renamedList: { id: string; name: string }[]) => {
+    const map = new Map(renamedList.map((item) => [item.id, item.name]));
+    setPhotos((prev) =>
+      prev.map((photo) => {
+        const newName = map.get(photo.id);
+        return newName ? { ...photo, name: newName } : photo;
+      })
+    );
+    if (activeCropPhoto && map.has(activeCropPhoto.id)) {
+      setActiveCropPhoto((prev) => prev ? { ...prev, name: map.get(prev.id)! } : null);
+    }
+  };
+
   // Delete photo
   const handleDeletePhoto = (id: string) => {
     setPhotos((prev) => prev.filter((p) => p.id !== id));
@@ -303,6 +317,7 @@ export default function App() {
             onApplyRatioToOrientation={handleApplyRatioToOrientation}
             onToggleCintilloAll={handleToggleCintilloAll}
             onClearAll={handleClearAll}
+            onBatchRenamePhotos={handleBatchRenamePhotos}
           />
         )}
 

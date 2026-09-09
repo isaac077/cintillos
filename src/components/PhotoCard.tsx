@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AspectRatioId, CintilloConfig, PhotoItem } from '../types';
 import { ASPECT_RATIOS, canvasToBlob, getAspectRatio, getDefaultCrop, renderProcessedImage, triggerDownload } from '../utils/cropUtils';
-import { Crop, Download, Trash2, CheckCircle2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { Crop, Download, Trash2, CheckCircle2, ShieldCheck, Eye, EyeOff, Pencil, Check, X } from 'lucide-react';
 
 interface PhotoCardProps {
   photo: PhotoItem;
@@ -21,6 +21,31 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isRenderingThumb, setIsRenderingThumb] = useState(true);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState(photo.name);
+
+  // Keep name input in sync if changed from batch modal
+  useEffect(() => {
+    setNameInput(photo.name);
+  }, [photo.name]);
+
+  const handleSaveName = () => {
+    const trimmed = nameInput.trim();
+    if (trimmed && trimmed !== photo.name) {
+      // Preserve extension if user didn't write one
+      const oldExtMatch = photo.name.match(/\.[^/.]+$/);
+      const oldExt = oldExtMatch ? oldExtMatch[0] : '';
+      const hasExt = /\.[a-zA-Z0-9]{3,4}$/.test(trimmed);
+      const finalName = hasExt ? trimmed : `${trimmed}${oldExt}`;
+      onUpdatePhoto({
+        ...photo,
+        name: finalName,
+      });
+    } else {
+      setNameInput(photo.name);
+    }
+    setIsEditingName(false);
+  };
 
   // Fast canvas thumbnail render reflecting exact crop & cintillo
   useEffect(() => {
@@ -184,10 +209,65 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({
       {/* Card Info & Controls */}
       <div className="p-3.5 flex-1 flex flex-col justify-between space-y-3 bg-white">
         <div>
-          <div className="flex items-center justify-between gap-2">
-            <h4 className="text-xs font-bold text-slate-800 truncate" title={photo.name}>
-              {photo.name}
-            </h4>
+          <div className="flex items-center justify-between gap-2 min-w-0">
+            {isEditingName ? (
+              <div className="flex items-center gap-1 flex-1 min-w-0">
+                <input
+                  type="text"
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveName();
+                    if (e.key === 'Escape') {
+                      setNameInput(photo.name);
+                      setIsEditingName(false);
+                    }
+                  }}
+                  onBlur={handleSaveName}
+                  autoFocus
+                  className="w-full px-2 py-0.5 text-xs font-bold text-slate-800 border-2 border-indigo-500 rounded-md focus:outline-none bg-indigo-50/50"
+                />
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={handleSaveName}
+                  className="p-1 hover:bg-emerald-50 text-emerald-600 rounded cursor-pointer"
+                  title="Guardar nombre"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    setNameInput(photo.name);
+                    setIsEditingName(false);
+                  }}
+                  className="p-1 hover:bg-slate-100 text-slate-400 rounded cursor-pointer"
+                  title="Cancelar"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 min-w-0 flex-1 group/name">
+                <h4
+                  onClick={() => setIsEditingName(true)}
+                  className="text-xs font-bold text-slate-800 truncate cursor-pointer hover:text-indigo-600 transition-colors"
+                  title={`Clic o lápiz para cambiar nombre: ${photo.name}`}
+                >
+                  {photo.name}
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingName(true)}
+                  className="opacity-0 group-hover/name:opacity-100 p-0.5 text-slate-400 hover:text-indigo-600 transition-opacity cursor-pointer shrink-0"
+                  title="Cambiar nombre de la foto"
+                >
+                  <Pencil className="w-3 h-3" />
+                </button>
+              </div>
+            )}
             <span className="text-[10px] text-slate-400 font-mono shrink-0">
               {photo.cropRect.width} × {photo.cropRect.height} px
             </span>
