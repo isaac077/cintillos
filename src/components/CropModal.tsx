@@ -462,28 +462,28 @@ export const CropModal: React.FC<CropModalProps> = ({
                     style={{
                       top:
                         cintillo.watermark?.position?.startsWith('top')
-                          ? `${(cintillo.watermark.marginPx || 20) * scale}px`
+                          ? `${(cintillo.watermark.marginPx ?? 20) * scale}px`
                           : cintillo.watermark?.position === 'center'
                           ? '50%'
                           : 'auto',
                       bottom:
                         cintillo.watermark?.position?.startsWith('bottom')
-                          ? `${(cintillo.watermark.marginPx || 20) * scale}px`
+                          ? `${(cintillo.watermark.marginPx ?? 20) * scale}px`
                           : 'auto',
                       left:
                         cintillo.watermark?.position?.endsWith('left')
-                          ? `${(cintillo.watermark.marginPx || 20) * scale}px`
+                          ? `${(cintillo.watermark.marginPx ?? 20) * scale}px`
                           : cintillo.watermark?.position === 'center'
                           ? '50%'
                           : 'auto',
                       right:
                         cintillo.watermark?.position?.endsWith('right')
-                          ? `${(cintillo.watermark.marginPx || 20) * scale}px`
+                          ? `${(cintillo.watermark.marginPx ?? 20) * scale}px`
                           : 'auto',
                       transform:
                         cintillo.watermark?.position === 'center' ? 'translate(-50%, -50%)' : undefined,
                       width: `${Math.min(
-                        screenCrop.width - (cintillo.watermark?.marginPx || 20) * scale * 2,
+                        screenCrop.width - Math.max(0, cintillo.watermark?.marginPx ?? 20) * scale * 2,
                         Math.max(
                           20,
                           (cintillo.watermark?.originalWidth ||

@@ -900,29 +900,140 @@ export const CintilloManager: React.FC<CintilloManagerProps> = ({
                     </div>
                   </div>
 
-                  {/* Margin from Corner */}
-                  <div className="space-y-1 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+                  {/* Margin from Corner / Corner Contact */}
+                  <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="font-semibold text-slate-700">Separación del borde (Margen)</span>
-                      <span className="font-bold text-indigo-600">{cintillo.watermark?.marginPx ?? 20} px</span>
+                      <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                        <Move className="w-3.5 h-3.5 text-indigo-600" />
+                        Ajuste a la Esquina / Borde
+                      </span>
+                      {(cintillo.watermark?.marginPx ?? 20) === 0 ? (
+                        <span className="font-bold text-emerald-700 bg-emerald-100/90 px-2 py-0.5 rounded text-[11px] border border-emerald-300">
+                          ✨ 0px — Al ras (Toca la esquina)
+                        </span>
+                      ) : (cintillo.watermark?.marginPx ?? 20) < 0 ? (
+                        <span className="font-bold text-amber-700 bg-amber-100/90 px-2 py-0.5 rounded text-[11px] border border-amber-300">
+                          {cintillo.watermark?.marginPx} px (Sangrado hacia afuera)
+                        </span>
+                      ) : (
+                        <span className="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded text-[11px] border border-indigo-200">
+                          {cintillo.watermark?.marginPx ?? 20} px de margen
+                        </span>
+                      )}
                     </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="60"
-                      step="2"
-                      value={cintillo.watermark?.marginPx ?? 20}
-                      onChange={(e) =>
-                        onChange({
-                          ...cintillo,
-                          watermark: { ...cintillo.watermark, marginPx: Number(e.target.value) },
-                        })
-                      }
-                      className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
-                    />
-                    <div className="flex justify-between text-[10px] text-slate-400">
-                      <span>Al borde (0px)</span>
-                      <span>Espaciado (60px)</span>
+
+                    {/* Dedicated 1-Click Corner Mode Toggle */}
+                    <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200/70 rounded-lg text-xs font-medium">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onChange({
+                            ...cintillo,
+                            watermark: { ...cintillo.watermark, marginPx: 0 },
+                          })
+                        }
+                        className={`py-1.5 px-2 rounded-md flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          (cintillo.watermark?.marginPx ?? 20) === 0
+                            ? 'bg-white text-emerald-700 shadow-xs font-bold ring-1 ring-emerald-400/40'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <Crosshair className="w-3.5 h-3.5 text-emerald-600" />
+                        Tocar esquina (0px / Al ras)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onChange({
+                            ...cintillo,
+                            watermark: {
+                              ...cintillo.watermark,
+                              marginPx: (cintillo.watermark?.marginPx ?? 0) === 0 ? 20 : (cintillo.watermark?.marginPx ?? 20),
+                            },
+                          })
+                        }
+                        className={`py-1.5 px-2 rounded-md flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          (cintillo.watermark?.marginPx ?? 20) > 0
+                            ? 'bg-white text-indigo-700 shadow-xs font-bold'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <Compass className="w-3.5 h-3.5 text-indigo-600" />
+                        Con separación (Margen)
+                      </button>
+                    </div>
+
+                    {(cintillo.watermark?.marginPx ?? 20) === 0 && (
+                      <div className="text-[11px] bg-emerald-50 text-emerald-800 p-2 rounded-lg border border-emerald-200/80 flex items-start gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                        <span>
+                          <strong>Modo al ras activo:</strong> La marca de agua se ubica exactamente tocando los bordes de la esquina (0px de espacio). Ideal para marcas de agua que simulan salir de la esquina o cintas diagonales.
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Fine-tuning margin slider with quick actions */}
+                    <div className="pt-1 space-y-1">
+                      <input
+                        type="range"
+                        min="-20"
+                        max="60"
+                        step="1"
+                        value={cintillo.watermark?.marginPx ?? 20}
+                        onChange={(e) =>
+                          onChange({
+                            ...cintillo,
+                            watermark: { ...cintillo.watermark, marginPx: Number(e.target.value) },
+                          })
+                        }
+                        className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                      />
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-slate-400">Sangrado (-20px)</span>
+                        <div className="flex gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onChange({
+                                ...cintillo,
+                                watermark: { ...cintillo.watermark, marginPx: 0 },
+                              })
+                            }
+                            className={`font-semibold px-1.5 py-0.5 rounded transition-colors ${
+                              (cintillo.watermark?.marginPx ?? 20) === 0
+                                ? 'bg-emerald-600 text-white'
+                                : 'text-emerald-700 hover:underline'
+                            }`}
+                          >
+                            [0px Tocar Esquina]
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onChange({
+                                ...cintillo,
+                                watermark: { ...cintillo.watermark, marginPx: 15 },
+                              })
+                            }
+                            className="text-slate-500 hover:text-slate-800"
+                          >
+                            15px
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onChange({
+                                ...cintillo,
+                                watermark: { ...cintillo.watermark, marginPx: 25 },
+                              })
+                            }
+                            className="text-slate-500 hover:text-slate-800"
+                          >
+                            25px
+                          </button>
+                        </div>
+                        <span className="text-slate-400">Separado (60px)</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1040,23 +1151,23 @@ export const CintilloManager: React.FC<CintilloManagerProps> = ({
                     style={{
                       top:
                         cintillo.watermark?.position === 'top-left' || cintillo.watermark?.position === 'top-right'
-                          ? `${Math.max(3, ((cintillo.watermark.marginPx ?? 20) / 1080) * 100)}%`
+                          ? `${((cintillo.watermark.marginPx ?? 20) / 1080) * 100}%`
                           : cintillo.watermark?.position === 'center'
                           ? '50%'
                           : 'auto',
                       bottom:
                         cintillo.watermark?.position === 'bottom-left' || cintillo.watermark?.position === 'bottom-right'
-                          ? `${Math.max(3, ((cintillo.watermark.marginPx ?? 20) / 1080) * 100)}%`
+                          ? `${((cintillo.watermark.marginPx ?? 20) / 1080) * 100}%`
                           : 'auto',
                       left:
                         cintillo.watermark?.position === 'top-left' || cintillo.watermark?.position === 'bottom-left'
-                          ? `${Math.max(3, ((cintillo.watermark.marginPx ?? 20) / 1080) * 100)}%`
+                          ? `${((cintillo.watermark.marginPx ?? 20) / 1080) * 100}%`
                           : cintillo.watermark?.position === 'center'
                           ? '50%'
                           : 'auto',
                       right:
                         cintillo.watermark?.position === 'top-right' || cintillo.watermark?.position === 'bottom-right'
-                          ? `${Math.max(3, ((cintillo.watermark.marginPx ?? 20) / 1080) * 100)}%`
+                          ? `${((cintillo.watermark.marginPx ?? 20) / 1080) * 100}%`
                           : 'auto',
                       transform: cintillo.watermark?.position === 'center' ? 'translate(-50%, -50%)' : undefined,
                       width: `${Math.max(
@@ -1224,23 +1335,23 @@ export const CintilloManager: React.FC<CintilloManagerProps> = ({
                     style={{
                       top:
                         cintillo.watermark?.position === 'top-left' || cintillo.watermark?.position === 'top-right'
-                          ? `${Math.max(3, ((cintillo.watermark.marginPx ?? 20) / 1200) * 100)}%`
+                          ? `${((cintillo.watermark.marginPx ?? 20) / 1200) * 100}%`
                           : cintillo.watermark?.position === 'center'
                           ? '50%'
                           : 'auto',
                       bottom:
                         cintillo.watermark?.position === 'bottom-left' || cintillo.watermark?.position === 'bottom-right'
-                          ? `${Math.max(3, ((cintillo.watermark.marginPx ?? 20) / 1200) * 100)}%`
+                          ? `${((cintillo.watermark.marginPx ?? 20) / 1200) * 100}%`
                           : 'auto',
                       left:
                         cintillo.watermark?.position === 'top-left' || cintillo.watermark?.position === 'bottom-left'
-                          ? `${Math.max(3, ((cintillo.watermark.marginPx ?? 20) / 1920) * 100)}%`
+                          ? `${((cintillo.watermark.marginPx ?? 20) / 1920) * 100}%`
                           : cintillo.watermark?.position === 'center'
                           ? '50%'
                           : 'auto',
                       right:
                         cintillo.watermark?.position === 'top-right' || cintillo.watermark?.position === 'bottom-right'
-                          ? `${Math.max(3, ((cintillo.watermark.marginPx ?? 20) / 1920) * 100)}%`
+                          ? `${((cintillo.watermark.marginPx ?? 20) / 1920) * 100}%`
                           : 'auto',
                       transform: cintillo.watermark?.position === 'center' ? 'translate(-50%, -50%)' : undefined,
                       width: `${Math.max(

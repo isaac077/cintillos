@@ -267,8 +267,9 @@ export function drawWatermarkOnCanvas(
   const margin = Math.round(watermark?.marginPx ?? 20);
 
   // If the drawn size exceeds the available canvas area, fit proportionally inside bounds
-  const maxW = Math.max(10, canvasWidth - margin * 2);
-  const maxH = Math.max(10, canvasHeight - margin * 2);
+  const effectiveMarginForBound = Math.max(0, margin);
+  const maxW = Math.max(10, canvasWidth - effectiveMarginForBound * 2);
+  const maxH = Math.max(10, canvasHeight - effectiveMarginForBound * 2);
   if (drawW > maxW || drawH > maxH) {
     const factor = Math.min(maxW / drawW, maxH / drawH);
     if (factor < 1) {
