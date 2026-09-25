@@ -356,12 +356,6 @@ export function drawCintilloOnCanvas(
   let drawW = canvasWidth - margin * 2;
   let drawH = Math.round(drawW / cintilloRatio);
 
-  let useSourceCrop = false;
-  let sX = 0;
-  let sY = 0;
-  let sW = origW;
-  let sH = origH;
-
   if (cintillo.fitMode === 'crop-sides') {
     // Keep banner height and logo scale fixed across vertical & horizontal!
     // Excess width is cropped from sides symmetrically.
@@ -379,19 +373,8 @@ export function drawCintilloOnCanvas(
     drawW = canvasWidth - margin * 2;
     drawH = Math.round(drawW / cintilloRatio);
 
-    // Smart Adaptive behavior for horizontal photos:
-    // Never shrink banner width into a small patch! Keep full width coverage
-    // and adaptively crop excess height so it stays proportional.
-    if (isHorizontalCanvas) {
-      const maxH = Math.round((canvasHeight * (cintillo.maxHeightPercentHorizontal || 22)) / 100);
-      if (drawH > maxH) {
-        useSourceCrop = true;
-        drawH = maxH;
-        const targetRatio = drawW / drawH;
-        sH = Math.round(origW / targetRatio);
-        sY = Math.max(0, Math.round((origH - sH) / 2));
-      }
-    }
+    // Preserve the complete PNG, including artwork anchored at its bottom edge.
+    // Center-cropping a transparent template can remove the entire visible banner.
   } else if (cintillo.fitMode === 'height-percent') {
     // Scales to X% of canvas height
     const targetH = Math.round((canvasHeight * cintillo.heightPercent) / 100);
@@ -442,11 +425,7 @@ export function drawCintilloOnCanvas(
   // Save context state for opacity
   ctx.save();
   ctx.globalAlpha = cintillo.opacity ?? 1.0;
-  if (useSourceCrop) {
-    ctx.drawImage(cintilloImg, sX, sY, sW, sH, drawX, drawY, drawW, drawH);
-  } else {
-    ctx.drawImage(cintilloImg, drawX, drawY, drawW, drawH);
-  }
+  ctx.drawImage(cintilloImg, drawX, drawY, drawW, drawH);
   ctx.restore();
 }
 
