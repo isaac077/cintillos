@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { AspectRatioId, CintilloConfig, CropRect, PhotoItem } from '../types';
-import { ASPECT_RATIOS, clampCrop, getAspectRatio, getDefaultCrop } from '../utils/cropUtils';
+import { AspectRatioId, CintilloConfig, CropRect, ExportSettings, PhotoItem } from '../types';
+import { ASPECT_RATIOS, getOutputDimensions, renderProcessedImage, clampCrop, getAspectRatio, getDefaultCrop } from '../utils/cropUtils';
 import { 
   X, Check, ChevronLeft, ChevronRight, Maximize2, 
   AlignCenter, Eye, EyeOff, Layers, Pencil
 } from 'lucide-react';
 
 interface CropModalProps {
+  settings: ExportSettings;
   photo: PhotoItem;
   photos: PhotoItem[];
   cintillo: CintilloConfig;
@@ -17,6 +18,7 @@ interface CropModalProps {
 }
 
 export const CropModal: React.FC<CropModalProps> = ({
+  settings,
   photo,
   photos,
   cintillo,
@@ -36,6 +38,23 @@ export const CropModal: React.FC<CropModalProps> = ({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState<{ width: number; height: number }>({ width: 600, height: 400 });
+
+  const previewRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    let active = true;
+    const frame = requestAnimationFrame(() => {
+      renderProcessedImage({ ...photo, cropRect: crop, applyCintillo: showCintilloPreview }, cintillo, settings)
+        .then(rendered => {
+          if (!active || !previewRef.current) return;
+          const canvas = previewRef.current;
+          canvas.width = rendered.width;
+          canvas.height = rendered.height;
+          canvas.getContext('2d')?.drawImage(rendered, 0, 0);
+        })
+        .catch(error => console.error('No se pudo mostrar la vista previa:', error));
+    });
+    return () => { active = false; cancelAnimationFrame(frame); };
+  }, [photo, crop, showCintilloPreview, cintillo, settings.resolutionMode]);
 
   // Update crop and name when photo changes
   useEffect(() => {
@@ -441,6 +460,8 @@ export const CropModal: React.FC<CropModalProps> = ({
               onPointerDown={(e) => handlePointerDown(e, 'move')}
               className="z-20 cursor-move border-2 border-indigo-400 shadow-xl box-border"
             >
+              <canvas ref={previewRef} aria-label="Vista previa de la descarga"
+                className="absolute inset-0 w-full h-full pointer-events-none" />
               {/* Rule of Thirds Grid */}
               <div className="absolute inset-0 pointer-events-none grid grid-cols-3 grid-rows-3 opacity-30">
                 <div className="border-r border-b border-white" />
@@ -453,143 +474,6 @@ export const CropModal: React.FC<CropModalProps> = ({
                 <div className="border-r border-white" />
                 <div />
               </div>
-
-              {/* Live Overlays in Cropper (Banner and/or Corner Logo) */}
-              {showCintilloPreview && (cintillo.overlayMode === 'banner' || cintillo.overlayMode === 'both') && (cintillo.objectUrl || (cintillo.separateByOrientation && cintillo.horizontalCintillo?.objectUrl)) && (() => {
-                const isHorizontalCrop = crop.width > crop.height;
-                const refWidth = isHorizontalCrop ? 1920 : 1080;
-                const bannerMargin = Math.round((cintillo.marginPx || 0) * (screenCrop.width / refWidth));
-                const bannerScaleRatio = Math.min(1.0, Math.max(0.15, (((cintillo.originalWidth || refWidth) * ((cintillo.scalePercent ?? 100) / 100)) / refWidth)));
-
-                return (
-                  <div
-                    className="absolute inset-0 pointer-events-none overflow-hidden flex z-10"
-                    style={{
-                      alignItems:
-                        cintillo.position?.startsWith('top') || cintillo.position === 'top'
-                          ? 'flex-start'
-                          : cintillo.position?.startsWith('bottom') || cintillo.position === 'bottom'
-                          ? 'flex-end'
-                          : 'center',
-                      justifyContent:
-                        cintillo.position?.endsWith('left')
-                          ? 'flex-start'
-                          : cintillo.position?.endsWith('right')
-                          ? 'flex-end'
-                          : 'center',
-                    }}
-                  >
-                    <img
-                      src={
-                        cintillo.separateByOrientation && isHorizontalCrop && cintillo.horizontalCintillo?.objectUrl
-                          ? cintillo.horizontalCintillo.objectUrl
-                          : cintillo.objectUrl || ''
-                      }
-                      alt="Cintillo preview"
-                      style={{
-                        opacity: cintillo.opacity,
-                        width:
-                          cintillo.fitMode === 'crop-sides'
-                            ? '100%'
-                            : cintillo.fitMode === 'full-width'
-                            ? '100%'
-                            : cintillo.fitMode === 'scale'
-                            ? `${Math.max(40, Math.round(screenCrop.width * bannerScaleRatio))}px`
-                            : 'auto',
-                        height:
-                          cintillo.fitMode === 'crop-sides'
-                            ? `${cintillo.heightPercent || 14}%`
-                            : cintillo.fitMode === 'height-percent'
-                            ? `${cintillo.heightPercent}%`
-                            : undefined,
-                        maxHeight:
-                          cintillo.fitMode === 'crop-sides'
-                            ? undefined
-                            : cintillo.fitMode === 'height-percent'
-                            ? `${cintillo.heightPercent}%`
-                            : isHorizontalCrop
-                            ? `${Math.max(20, cintillo.maxHeightPercentHorizontal || 22)}%`
-                            : '35%',
-                        margin: `${bannerMargin}px`,
-                        objectFit: cintillo.fitMode === 'crop-sides' || (cintillo.fitMode === 'full-width' && isHorizontalCrop) ? 'cover' : 'contain',
-                      }}
-                      className="transition-all"
-                    />
-                  </div>
-                );
-              })()}
-
-              {/* Live Corner Logo / Watermark Overlay */}
-              {showCintilloPreview &&
-                (cintillo.overlayMode === 'corner-logo' || cintillo.overlayMode === 'both') &&
-                (cintillo.watermark?.objectUrl || (cintillo.overlayMode === 'corner-logo' && cintillo.objectUrl)) && (() => {
-                  const isHorizontalCrop = crop.width > crop.height;
-                  const refWidth = isHorizontalCrop ? 1920 : 1080;
-                  const activeLogoOrigW =
-                    cintillo.watermark?.originalWidth ||
-                    (cintillo.overlayMode === 'corner-logo' ? cintillo.originalWidth : 0) ||
-                    350;
-                  const activeLogoScale = cintillo.watermark?.scalePercent ?? 100;
-                  const watermarkRatio = Math.min(
-                    0.65,
-                    Math.max(0.08, (activeLogoOrigW * (activeLogoScale / 100)) / refWidth)
-                  );
-                  const watermarkScreenWidth = Math.max(24, Math.round(screenCrop.width * watermarkRatio));
-                  const watermarkScreenMargin = Math.round(
-                    (cintillo.watermark?.marginPx ?? 20) * (screenCrop.width / refWidth)
-                  );
-
-                  return (
-                    <div
-                      className="absolute pointer-events-none z-10 transition-all"
-                      style={{
-                        top:
-                          cintillo.watermark?.position?.startsWith('top')
-                            ? `${watermarkScreenMargin}px`
-                            : cintillo.watermark?.position?.startsWith('center') || cintillo.watermark?.position === 'center'
-                            ? '50%'
-                            : 'auto',
-                        bottom:
-                          cintillo.watermark?.position?.startsWith('bottom')
-                            ? `${watermarkScreenMargin}px`
-                            : 'auto',
-                        left:
-                          cintillo.watermark?.position?.endsWith('left')
-                            ? `${watermarkScreenMargin}px`
-                            : cintillo.watermark?.position?.endsWith('center') || cintillo.watermark?.position === 'center'
-                            ? '50%'
-                            : 'auto',
-                        right:
-                          cintillo.watermark?.position?.endsWith('right')
-                            ? `${watermarkScreenMargin}px`
-                            : 'auto',
-                        transform:
-                          cintillo.watermark?.position === 'center'
-                            ? 'translate(-50%, -50%)'
-                            : cintillo.watermark?.position === 'top-center' || cintillo.watermark?.position === 'bottom-center'
-                            ? 'translateX(-50%)'
-                            : cintillo.watermark?.position === 'center-left' || cintillo.watermark?.position === 'center-right'
-                            ? 'translateY(-50%)'
-                            : undefined,
-                        width: `${watermarkScreenWidth}px`,
-                      }}
-                    >
-                      <img
-                        src={
-                          cintillo.watermark?.objectUrl ||
-                          (cintillo.overlayMode === 'corner-logo' ? cintillo.objectUrl || '' : '')
-                        }
-                        alt="Watermark preview"
-                        style={{
-                          opacity: cintillo.watermark?.opacity ?? 0.85,
-                          width: '100%',
-                          height: 'auto',
-                          objectFit: 'contain',
-                        }}
-                      />
-                    </div>
-                  );
-                })()}
 
               {/* Corner Handles */}
               <div
@@ -629,7 +513,7 @@ export const CropModal: React.FC<CropModalProps> = ({
 
               {/* Dimension Badge in Center */}
               <div className="absolute bottom-2 left-2 bg-slate-900/80 backdrop-blur-xs text-white text-[11px] font-mono px-2 py-0.5 rounded border border-slate-700 pointer-events-none">
-                {crop.width} × {crop.height} px
+                {getOutputDimensions(crop, settings.resolutionMode).width} × {getOutputDimensions(crop, settings.resolutionMode).height} px
               </div>
             </div>
           )}

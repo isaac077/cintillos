@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AspectRatioId, CintilloConfig, PhotoItem } from '../types';
-import { ASPECT_RATIOS, canvasToBlob, getAspectRatio, getDefaultCrop, renderProcessedImage, triggerDownload } from '../utils/cropUtils';
+import { AspectRatioId, CintilloConfig, ExportSettings, PhotoItem } from '../types';
+import { ASPECT_RATIOS, getOutputDimensions, canvasToBlob, getAspectRatio, getDefaultCrop, renderProcessedImage, triggerDownload } from '../utils/cropUtils';
 import { Crop, Download, Trash2, CheckCircle2, ShieldCheck, Eye, EyeOff, Pencil, Check, X } from 'lucide-react';
 
 interface PhotoCardProps {
+  settings: ExportSettings;
   photo: PhotoItem;
   cintillo: CintilloConfig;
   onOpenCrop: (photo: PhotoItem) => void;
@@ -12,6 +13,7 @@ interface PhotoCardProps {
 }
 
 export const PhotoCard: React.FC<PhotoCardProps> = ({
+  settings,
   photo,
   cintillo,
   onOpenCrop,
@@ -58,7 +60,7 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({
         if (!canvas) return;
 
         // Render full image with crop & cintillo
-        const rendered = await renderProcessedImage(photo, cintillo);
+        const rendered = await renderProcessedImage(photo, cintillo, settings);
         if (!active) return;
 
         // Size the thumbnail canvas cleanly
@@ -86,6 +88,7 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({
       active = false;
     };
   }, [
+    settings.resolutionMode,
     photo.cropRect,
     photo.aspectRatioId,
     photo.applyCintillo,
@@ -129,14 +132,11 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({
   const handleSingleDownload = async () => {
     setIsExporting(true);
     try {
-      const fullCanvas = await renderProcessedImage(photo, cintillo, {
-        format: 'jpeg',
-        quality: 1.0,
-        resolutionMode: 'original',
-      });
-      const blob = await canvasToBlob(fullCanvas, 'jpeg', 0.98);
+      const fullCanvas = await renderProcessedImage(photo, cintillo, settings);
+      const blob = await canvasToBlob(fullCanvas, settings.format, settings.quality);
       const cleanName = photo.name.replace(/\.[^/.]+$/, '');
-      triggerDownload(blob, `${cleanName}_${photo.aspectRatioId}.jpg`);
+      const ext = settings.format === 'jpeg' ? 'jpg' : settings.format;
+      triggerDownload(blob, `${cleanName}_${photo.aspectRatioId.replace(':', 'x')}.${ext}`);
     } catch (err) {
       console.error('Error al descargar:', err);
     } finally {
@@ -269,7 +269,7 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({
               </div>
             )}
             <span className="text-[10px] text-slate-400 font-mono shrink-0">
-              {photo.cropRect.width} × {photo.cropRect.height} px
+              {getOutputDimensions(photo.cropRect, settings.resolutionMode).width} × {getOutputDimensions(photo.cropRect, settings.resolutionMode).height} px
             </span>
           </div>
 
@@ -344,7 +344,7 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({
               onClick={handleSingleDownload}
               disabled={isExporting}
               className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-indigo-600 text-white text-[11px] font-semibold shadow-2xs transition-colors disabled:opacity-50"
-              title="Descargar en resolución nativa"
+              title="Descargar con los ajustes seleccionados"
             >
               {isExporting ? (
                 <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />

@@ -254,7 +254,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
             <span>•</span>
             <span>Detecta orientación</span>
             <span>•</span>
-            <span className="text-indigo-600 font-medium">100% Calidad Nativa</span>
+            <span className="text-indigo-600 font-medium">Salida HD para Instagram</span>
           </div>
 
           <button

@@ -17,6 +17,8 @@ import JSZip from 'jszip';
 import { BatchRenameModal } from './BatchRenameModal';
 
 interface BatchExportBarProps {
+  settings: ExportSettings;
+  setSettings: React.Dispatch<React.SetStateAction<ExportSettings>>;
   photos: PhotoItem[];
   cintillo: CintilloConfig;
   onApplyRatioToAll: (ratioId: AspectRatioId) => void;
@@ -28,6 +30,8 @@ interface BatchExportBarProps {
 }
 
 export const BatchExportBar: React.FC<BatchExportBarProps> = ({
+  settings,
+  setSettings,
   photos,
   cintillo,
   onApplyRatioToAll,
@@ -37,12 +41,6 @@ export const BatchExportBar: React.FC<BatchExportBarProps> = ({
   onClearAll,
   onBatchRenamePhotos,
 }) => {
-  const [settings, setSettings] = useState<ExportSettings>({
-    format: 'jpeg',
-    quality: 1.0,
-    resolutionMode: 'original',
-    namingStyle: 'sequential-ratio',
-  });
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [isExportingZip, setIsExportingZip] = useState(false);
@@ -227,7 +225,7 @@ export const BatchExportBar: React.FC<BatchExportBarProps> = ({
               <Sliders className="w-3.5 h-3.5" />
               <span className="uppercase font-bold">{settings.format}</span>
               <span className="text-slate-400">|</span>
-              <span>{settings.resolutionMode === 'original' ? 'Máx. Calidad' : settings.resolutionMode}</span>
+              <span>{settings.resolutionMode === 'instagram' ? 'HD · 1080 px' : settings.resolutionMode === 'original' ? 'Original' : '4K'}</span>
             </button>
 
             <button
@@ -399,13 +397,13 @@ export const BatchExportBar: React.FC<BatchExportBarProps> = ({
                 {[
                   {
                     id: 'original',
-                    title: 'Resolución Original (Recomendado)',
+                    title: 'Resolución original (opcional)',
                     desc: 'Mantiene exactamente la cantidad nativa de megapíxeles de tus fotos sin reducir tamaño.',
                   },
                   {
                     id: 'instagram',
-                    title: 'Optimizado para Redes Sociales (1080px)',
-                    desc: 'Escala el ancho a 1080px (estándar oficial de Instagram/Meta) evitando que la red social comprima bruscamente.',
+                    title: 'HD para Instagram · 1080 px (Recomendado)',
+                    desc: 'Ajusta la foto a un máximo de 1080 × 1920 px antes de aplicar el cintillo, sin deformar ni ampliar fotos pequeñas.',
                   },
                   {
                     id: '4k',
