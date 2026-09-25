@@ -147,7 +147,7 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
 
 export const DEFAULT_EXPORT_SETTINGS: ExportSettings = {
   format: 'jpeg',
-  quality: 0.98,
+  quality: 1.0,
   resolutionMode: 'instagram',
   namingStyle: 'sequential-ratio',
 };
@@ -435,7 +435,7 @@ export function drawCintilloOnCanvas(
 export function canvasToBlob(
   canvas: HTMLCanvasElement,
   format: 'jpeg' | 'png' | 'webp' = 'jpeg',
-  quality: number = 0.98
+  quality: number = 1.0
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const mimeType = format === 'png' ? 'image/png' : format === 'webp' ? 'image/webp' : 'image/jpeg';
