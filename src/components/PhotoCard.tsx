@@ -67,7 +67,8 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        const maxThumbWidth = 400;
+        // Keep previews crisp on high-density displays; export still uses the source photo.
+        const maxThumbWidth = 1080;
         const scale = Math.min(1, maxThumbWidth / rendered.width);
         canvas.width = Math.round(rendered.width * scale);
         canvas.height = Math.round(rendered.height * scale);
