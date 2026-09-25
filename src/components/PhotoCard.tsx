@@ -166,7 +166,7 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({
         />
 
         {/* Hover overlay hint */}
-        <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center gap-2 z-20">
+        <div className="absolute inset-0 pointer-events-none bg-slate-950/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center gap-2 z-20">
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/95 text-slate-900 text-xs font-bold shadow-lg transform -translate-y-1 group-hover/thumb:translate-y-0 transition-transform">
             <Crop className="w-3.5 h-3.5 text-indigo-600" />
             Editar Recorte
@@ -199,7 +199,7 @@ export const PhotoCard: React.FC<PhotoCardProps> = ({
             e.stopPropagation();
             onDeletePhoto(photo.id);
           }}
-          className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-slate-900/70 hover:bg-rose-600 text-slate-300 hover:text-white transition-colors z-10"
+          className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-slate-900/70 hover:bg-rose-600 text-slate-300 hover:text-white transition-colors z-30"
           title="Eliminar foto"
         >
           <Trash2 className="w-3.5 h-3.5" />
