@@ -145,8 +145,29 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
+export const DEFAULT_EXPORT_SETTINGS: ExportSettings = {
+  format: 'jpeg',
+  quality: 0.98,
+  resolutionMode: 'instagram',
+  namingStyle: 'sequential-ratio',
+};
+
+export function getOutputDimensions(
+  crop: Pick<CropRect, 'width' | 'height'>,
+  mode: ExportSettings['resolutionMode'] = 'instagram'
+) {
+  // Preserve the crop and avoid enlarging small photos. Stories fit in 1080 × 1920.
+  const scale = mode === 'instagram'
+    ? Math.min(1, 1080 / crop.width, 1920 / crop.height)
+    : mode === '4k' ? Math.min(1, 3840 / Math.max(crop.width, crop.height)) : 1;
+  return {
+    width: Math.max(1, Math.round(crop.width * scale)),
+    height: Math.max(1, Math.round(crop.height * scale)),
+  };
+}
+
 /**
- * Renders the final cropped image with the cintillo overlay at 100% full original resolution
+ * Renders the final cropped image with the cintillo overlay at the selected output resolution before applying overlays
  */
 export async function renderProcessedImage(
   photo: PhotoItem,
@@ -156,23 +177,7 @@ export async function renderProcessedImage(
   const img = await loadImage(photo.objectUrl);
 
   const crop = photo.cropRect;
-  let targetWidth = crop.width;
-  let targetHeight = crop.height;
-
-  // Optional scaling if user requested Instagram optimal or 4K
-  if (settings?.resolutionMode === 'instagram') {
-    // Standard Instagram resolution
-    const scale = 1080 / targetWidth;
-    targetWidth = 1080;
-    targetHeight = Math.round(crop.height * scale);
-  } else if (settings?.resolutionMode === '4k') {
-    const maxDim = Math.max(targetWidth, targetHeight);
-    if (maxDim > 3840) {
-      const scale = 3840 / maxDim;
-      targetWidth = Math.round(targetWidth * scale);
-      targetHeight = Math.round(targetHeight * scale);
-    }
-  }
+  const { width: targetWidth, height: targetHeight } = getOutputDimensions(crop, settings?.resolutionMode);
 
   const canvas = document.createElement('canvas');
   canvas.width = targetWidth;
