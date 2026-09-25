@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import { AspectRatioId, CintilloConfig, PhotoItem } from './types';
+import { AspectRatioId, CintilloConfig, ExportSettings, PhotoItem } from './types';
 import { Navbar } from './components/Navbar';
 import { CintilloManager } from './components/CintilloManager';
 import { PhotoUploader } from './components/PhotoUploader';
 import { PhotoCard } from './components/PhotoCard';
 import { CropModal } from './components/CropModal';
 import { BatchExportBar } from './components/BatchExportBar';
-import { createDemoAssets, getAspectRatio, getDefaultCrop } from './utils/cropUtils';
+import { DEFAULT_EXPORT_SETTINGS, createDemoAssets, getAspectRatio, getDefaultCrop } from './utils/cropUtils';
 import { Layers, Sparkles, SlidersHorizontal, Image as ImageIcon, ShieldCheck, CheckCircle2 } from 'lucide-react';
 
 export default function App() {
+  const [exportSettings, setExportSettings] = useState<ExportSettings>(DEFAULT_EXPORT_SETTINGS);
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [cintillo, setCintillo] = useState<CintilloConfig>({
     overlayMode: 'banner',
@@ -310,6 +311,8 @@ export default function App() {
         {/* Global batch bar if photos exist */}
         {photos.length > 0 && (
           <BatchExportBar
+            settings={exportSettings}
+            setSettings={setExportSettings}
             photos={photos}
             cintillo={cintillo}
             onApplyRatioToAll={handleApplyRatioToAll}
@@ -384,6 +387,7 @@ export default function App() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {photos.map((photo) => (
                 <PhotoCard
+                  settings={exportSettings}
                   key={photo.id}
                   photo={photo}
                   cintillo={cintillo}
@@ -406,7 +410,7 @@ export default function App() {
                 Recorta fotos en 1:1, 4:5, 5:4 y aplica tu cintillo al instante
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 max-w-lg mx-auto">
-                Diseñado para fotógrafos, diseñadores y community managers que necesitan adaptar lotes de fotos para Instagram, prensa o catálogos sin perder ni un píxel de nitidez.
+                Diseñado para fotógrafos, diseñadores y community managers que necesitan adaptar lotes de fotos para Instagram con fotos HD y cintillos proporcionados.
               </p>
             </div>
 
@@ -459,6 +463,7 @@ export default function App() {
       {/* Interactive Crop Modal */}
       {activeCropPhoto && (
         <CropModal
+          settings={exportSettings}
           photo={activeCropPhoto}
           photos={photos}
           cintillo={cintillo}
