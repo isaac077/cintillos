@@ -192,18 +192,20 @@ export async function renderProcessedImage(
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
 
-  // Draw cropped original image onto target canvas
-  ctx.drawImage(
-    img,
-    crop.x,
-    crop.y,
-    crop.width,
-    crop.height,
-    0,
-    0,
-    targetWidth,
-    targetHeight
+  // Rotate around the crop center and cover its corners without blank borders.
+  // Draw directly from the original, avoiding intermediate JPEG compression.
+  const angle = (photo.rotation || 0) * Math.PI / 180;
+  const zoom = Math.max(
+    Math.abs(Math.cos(angle)) + Math.abs(Math.sin(angle)) * crop.height / crop.width,
+    Math.abs(Math.cos(angle)) + Math.abs(Math.sin(angle)) * crop.width / crop.height
   );
+  ctx.save();
+  ctx.translate(targetWidth / 2, targetHeight / 2);
+  ctx.scale(targetWidth / crop.width, targetHeight / crop.height);
+  ctx.rotate(angle);
+  ctx.scale(zoom, zoom);
+  ctx.drawImage(img, -crop.x - crop.width / 2, -crop.y - crop.height / 2);
+  ctx.restore();
 
   // Draw overlays based on overlayMode (banner, corner-logo, or both)
   const shouldRenderBanner =
