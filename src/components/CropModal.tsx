@@ -30,6 +30,7 @@ export const CropModal: React.FC<CropModalProps> = ({
   if (!isOpen) return null;
 
   const [currentRatioId, setCurrentRatioId] = useState<AspectRatioId>(photo.aspectRatioId);
+  const [rotation, setRotation] = useState(photo.rotation || 0);
   const [crop, setCrop] = useState<CropRect>(photo.cropRect);
   const [showCintilloPreview, setShowCintilloPreview] = useState<boolean>(photo.applyCintillo);
   const [applyToAll, setApplyToAll] = useState<boolean>(false);
@@ -43,7 +44,7 @@ export const CropModal: React.FC<CropModalProps> = ({
   useEffect(() => {
     let active = true;
     const frame = requestAnimationFrame(() => {
-      renderProcessedImage({ ...photo, cropRect: crop, applyCintillo: showCintilloPreview }, cintillo, settings)
+      renderProcessedImage({ ...photo, rotation, cropRect: crop, applyCintillo: showCintilloPreview }, cintillo, settings)
         .then(rendered => {
           if (!active || !previewRef.current) return;
           const canvas = previewRef.current;
@@ -54,12 +55,13 @@ export const CropModal: React.FC<CropModalProps> = ({
         .catch(error => console.error('No se pudo mostrar la vista previa:', error));
     });
     return () => { active = false; cancelAnimationFrame(frame); };
-  }, [photo, crop, showCintilloPreview, cintillo, settings.resolutionMode]);
+  }, [photo, crop, rotation, showCintilloPreview, cintillo, settings.resolutionMode]);
 
   // Update crop and name when photo changes
   useEffect(() => {
     setCurrentRatioId(photo.aspectRatioId);
     setCrop(photo.cropRect);
+    setRotation(photo.rotation || 0);
     setShowCintilloPreview(photo.applyCintillo);
     setModalPhotoName(photo.name);
     setIsEditingName(false);
@@ -247,6 +249,7 @@ export const CropModal: React.FC<CropModalProps> = ({
         name: modalPhotoName.trim() || photo.name,
         aspectRatioId: currentRatioId,
         cropRect: crop,
+        rotation,
         applyCintillo: showCintilloPreview,
       },
       applyToAll
@@ -342,6 +345,19 @@ export const CropModal: React.FC<CropModalProps> = ({
               <X className="w-5 h-5" />
             </button>
           </div>
+        </div>
+
+        <div className="px-4 py-3 border-b border-slate-800 flex flex-wrap items-center gap-3 shrink-0">
+          <label htmlFor="straighten-photo" className="text-sm font-semibold">Enderezar foto</label>
+          <input id="straighten-photo" type="range" min="-45" max="45" step="0.1"
+            value={rotation} onChange={e => setRotation(Number(e.target.value))}
+            className="flex-1 min-w-24 accent-indigo-500" />
+          <input aria-label="Inclinación en grados" type="number" min="-45" max="45" step="0.1"
+            value={rotation} onChange={e => setRotation(Math.max(-45, Math.min(45, Number(e.target.value))))}
+            className="w-20 rounded bg-slate-800 px-2 py-1 text-sm" />
+          <span className="text-sm text-slate-400">°</span>
+          <button type="button" onClick={() => setRotation(0)} className="text-xs text-indigo-300 hover:text-white">Restablecer</button>
+          <p className="w-full text-xs text-slate-400">Ajusta la inclinación; los bordes se recortan automáticamente y el cintillo queda derecho.</p>
         </div>
 
         {/* Aspect Ratio Toolbar */}
